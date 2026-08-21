@@ -1,0 +1,219 @@
+/* ============================================
+   DashboardPage.css — Clinical Dashboard Styling
+   ============================================ */
+
+.dashboard-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-2xl);
+  padding: var(--space-2xl);
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.welcome-title {
+  font-size: 1.85rem;
+  margin-bottom: var(--space-sm);
+  color: var(--text-primary);
+}
+
+.welcome-title .accent {
+  color: var(--teal-600);
+}
+
+.welcome-subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.analyze-cta {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dashboard-stats {
+  margin-bottom: var(--space-2xl);
+}
+
+.stat-card {
+  background-color: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--teal-700);
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ============================================
+   Recent Analyses — Boxed Table Container Card
+   ============================================ */
+.dashboard-recent {
+  margin-bottom: var(--space-2xl);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.section-header h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* The Boxed Table Card */
+.dashboard-table-card {
+  background-color: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  padding: 0;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.clinical-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.clinical-table thead {
+  background-color: var(--teal-50);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.clinical-table th {
+  padding: 0.95rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--teal-900);
+  white-space: nowrap;
+}
+
+.clinical-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background-color var(--transition-fast);
+}
+
+.clinical-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.clinical-table tbody tr:hover {
+  background-color: #f0fdfa;
+}
+
+.clinical-table td {
+  padding: 1rem 1.25rem;
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.table-date-cell {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.table-disease-cell strong {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 0.925rem;
+}
+
+.confidence-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--teal-700);
+}
+
+.confidence-mini-bar {
+  width: 70px;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.confidence-mini-fill {
+  height: 100%;
+  background: var(--teal-500);
+  border-radius: var(--radius-full);
+}
+
+.table-action-btn {
+  font-size: 0.825rem;
+  padding: 0.35rem 0.85rem;
+  white-space: nowrap;
+}
+
+/* Empty State inside Box */
+.empty-table-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+
+.empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.empty-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.empty-text {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .dashboard-welcome {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

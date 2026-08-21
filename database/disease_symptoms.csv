@@ -1,0 +1,61 @@
+disease_id,disease_name,symptom_keyword,symptom_description,severity
+1,Acne,pimples,[VERIFY] Small red or white bumps on the skin,moderate
+1,Acne,blackheads,[VERIFY] Open clogged pores appearing as dark spots,mild
+1,Acne,whiteheads,[VERIFY] Closed clogged pores appearing as small white bumps,mild
+1,Acne,oily skin,[VERIFY] Excess oil or sebum on the skin surface,mild
+1,Acne,inflammation,[VERIFY] Red swollen areas around breakouts,moderate
+2,Eczema,itching,[VERIFY] Persistent itchy skin especially at night,moderate
+2,Eczema,redness,[VERIFY] Red or inflamed patches on the skin,moderate
+2,Eczema,dry skin,[VERIFY] Dry cracked or scaly skin,mild
+2,Eczema,rash,[VERIFY] Raised bumps which may leak fluid when scratched,moderate
+2,Eczema,thickened skin,[VERIFY] Thickened cracked or scaly skin from chronic scratching,moderate
+3,Psoriasis,scaling,[VERIFY] Thick silvery-white scaly patches on the skin,moderate
+3,Psoriasis,red patches,[VERIFY] Red patches covered with thick silvery scales,moderate
+3,Psoriasis,dry skin,[VERIFY] Dry cracked skin that may bleed,moderate
+3,Psoriasis,itching,[VERIFY] Itching burning or soreness around patches,moderate
+3,Psoriasis,nail changes,[VERIFY] Thickened pitted or ridged nails,mild
+4,Melanoma,irregular mole,[VERIFY] A mole with irregular borders or uneven color,severe
+4,Melanoma,color change,[VERIFY] A mole that changes color or has multiple colors,severe
+4,Melanoma,growing lesion,[VERIFY] A skin lesion that grows in size over time,severe
+4,Melanoma,asymmetry,[VERIFY] A mole where one half does not match the other,severe
+4,Melanoma,bleeding,[VERIFY] A mole or skin growth that bleeds or oozes,severe
+5,Rosacea,facial redness,[VERIFY] Persistent redness in the central part of the face,moderate
+5,Rosacea,visible blood vessels,[VERIFY] Small blood vessels on nose and cheeks become visible,moderate
+5,Rosacea,bumps,[VERIFY] Small red pus-filled bumps on the face,moderate
+5,Rosacea,eye irritation,[VERIFY] Dry irritated swollen eyes and eyelids,mild
+5,Rosacea,flushing,[VERIFY] Tendency to blush or flush easily,mild
+6,Dermatitis,rash,[VERIFY] Red itchy rash on skin after contact with an irritant,moderate
+6,Dermatitis,blisters,[VERIFY] Fluid-filled blisters on the affected area,moderate
+6,Dermatitis,dry skin,[VERIFY] Dry cracked or peeling skin,mild
+6,Dermatitis,burning,[VERIFY] Burning or stinging sensation on affected skin,moderate
+6,Dermatitis,swelling,[VERIFY] Swelling or tenderness of the affected area,moderate
+7,Ringworm,ring-shaped rash,[VERIFY] Circular or ring-shaped red patch on skin,moderate
+7,Ringworm,itching,[VERIFY] Itchy skin in the affected area,mild
+7,Ringworm,scaly skin,[VERIFY] Scaly or cracked skin within the ring,mild
+7,Ringworm,red border,[VERIFY] Raised red border around the patch,moderate
+7,Ringworm,spreading,[VERIFY] Patch that slowly grows and spreads outward,moderate
+8,Vitiligo,white patches,[VERIFY] Loss of skin color in blotches on the body,mild
+8,Vitiligo,depigmentation,[VERIFY] Patches of skin losing their pigment,mild
+8,Vitiligo,premature graying,[VERIFY] Premature whitening of hair on scalp or body,mild
+8,Vitiligo,color loss,[VERIFY] Loss of color in the tissues inside the mouth,mild
+9,Impetigo,red sores,[VERIFY] Red sores that quickly rupture and ooze,moderate
+9,Impetigo,honey-colored crust,[VERIFY] Honey-colored crusty coating after sores burst,moderate
+9,Impetigo,blisters,[VERIFY] Fluid-filled blisters on the skin,moderate
+9,Impetigo,itching,[VERIFY] Itchy rash around the sores,mild
+9,Impetigo,spreading sores,[VERIFY] Sores that spread to other areas of the body,moderate
+10,Urticaria,welts,[VERIFY] Red or skin-colored welts or bumps on skin,moderate
+10,Urticaria,itching,[VERIFY] Intense itching of the affected area,moderate
+10,Urticaria,swelling,[VERIFY] Swelling of lips eyes or throat in severe cases,severe
+10,Urticaria,blanching,[VERIFY] Welts that turn white when pressed in the center,mild
+10,Urticaria,migrating,[VERIFY] Welts that appear and disappear within hours,mild
+11,Basal Cell Carcinoma,pearly bump,Pearly or waxy bump on sun-exposed skin,severe
+11,Basal Cell Carcinoma,rolled borders,Raised translucent lesion with rolled borders,severe
+12,Squamous Cell Carcinoma,red nodule,Firm red nodule on the skin,severe
+12,Squamous Cell Carcinoma,scaly patch,Rough scaly crusty lesion,severe
+13,Actinic Keratosis,scaly patch,Rough dry scaly patch on the skin,moderate
+13,Actinic Keratosis,rough texture,Gritty sand-papery texture on sun-exposed areas,moderate
+14,Nevus,mole,Symmetrical uniform brown or tan mole,mild
+15,Pigmented Benign Keratosis,stuck-on plaque,Well-demarcated stuck-on pigmented plaque,mild
+16,Seborrheic Keratosis,waxy growth,Waxy stuck-on tan brown or black growth,mild
+17,Dermatofibroma,firm nodule,Firm small nodule on lower legs,mild
+18,Vascular Lesion,red spot,Bright red or purple spot on the skin,mild

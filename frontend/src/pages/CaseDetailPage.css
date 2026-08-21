@@ -1,0 +1,384 @@
+/* ============================================================
+   CaseDetailPage Styles & Medical Design System
+   ============================================================ */
+
+.case-detail-table-card {
+  background: #ffffff;
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: var(--space-xl, 1.5rem);
+}
+
+.case-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.case-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin: 0;
+}
+
+.case-card-intro {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #64748b);
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   Breakdown Table Alignment & Clinical Cells
+   ============================================================ */
+
+.case-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-default, #e2e8f0);
+  background: #ffffff;
+}
+
+.case-breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  min-width: 600px;
+}
+
+.case-breakdown-table th {
+  background-color: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.85rem 1rem;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.case-breakdown-table td {
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+  color: var(--text-primary, #0f172a);
+}
+
+.case-breakdown-table tr:hover {
+  background-color: #f8fafc;
+}
+
+.primary-case-row {
+  background-color: #f0fdfa !important;
+}
+
+.primary-case-row td {
+  border-bottom: 1.5px solid #99f6e4;
+}
+
+.diff-rank-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: #f1f5f9;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin: 0 auto;
+}
+
+.diff-rank-badge.rank-1 {
+  background-color: #0d9488;
+  color: #ffffff;
+}
+
+.condition-cell-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.condition-cell-title {
+  font-size: 0.925rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.primary-pill-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  background-color: #ccfbf1;
+  color: #0f766e;
+  border: 1px solid #99f6e4;
+}
+
+.score-cell-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.825rem;
+  min-width: 68px;
+  text-align: center;
+}
+
+.vision-pill {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.symptom-pill {
+  background-color: #f0fdfa;
+  color: #0f766e;
+  border: 1px solid #99f6e4;
+}
+
+.combined-cell-box {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.confidence-mini-bar {
+  flex: 1;
+  max-width: 80px;
+  height: 6px;
+  background-color: #e2e8f0;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.confidence-mini-fill {
+  height: 100%;
+  background-color: #0d9488;
+  border-radius: 9999px;
+}
+
+.combined-pct-text {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #0d9488;
+  min-width: 44px;
+  text-align: right;
+}
+
+/* ============================================================
+   Differentiating Features Table in Case Detail
+   ============================================================ */
+
+.differentiating-case-card {
+  background: #ffffff;
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: var(--space-xl, 1.5rem);
+}
+
+.clarification-badge {
+  background-color: #f0fdf4 !important;
+  color: #166534 !important;
+  border: 1px solid #bbf7d0 !important;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+}
+
+.differentiating-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 650px;
+}
+
+.differentiating-table th {
+  background-color: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  padding: 0.85rem 1rem;
+  border-bottom: 2px solid #e2e8f0;
+  text-align: left;
+}
+
+.differentiating-table td {
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+  color: #0f172a;
+  line-height: 1.5;
+}
+
+.differentiating-table tr:hover {
+  background-color: #f8fafc;
+}
+
+.primary-diff-row {
+  background-color: #f0fdfa !important;
+}
+
+.primary-diff-row td {
+  border-bottom: 1.5px solid #99f6e4;
+}
+
+.diff-disease-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.differentiating-disease-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.diff-feature-text {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.overlap-pill-text {
+  display: inline-block;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  color: #334155;
+  font-weight: 500;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.case-reason-pill {
+  display: inline-block;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  padding: 0.35rem 0.6rem;
+  color: #065f46;
+  font-weight: 500;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* ============================================================
+   Responsive Switcher for Differentiating Table
+   ============================================================ */
+
+.desktop-differentiating-table {
+  display: block;
+}
+
+.mobile-differentiating-cards {
+  display: none;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.mobile-diff-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-diff-card.primary-mobile-card {
+  border: 1.5px solid #2dd4bf;
+  background-color: #f0fdfa;
+}
+
+.mobile-diff-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+
+.mobile-diff-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.mobile-diff-row {
+  margin-bottom: 0.6rem;
+}
+
+.mobile-diff-row:last-child {
+  margin-bottom: 0;
+}
+
+.mobile-diff-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+}
+
+.mobile-diff-val {
+  font-size: 0.85rem;
+  color: #475569;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.mobile-diff-val.overlap-highlight {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  color: #334155;
+}
+
+.mobile-diff-val.case-highlight {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  color: #065f46;
+}
+
+@media (max-width: 768px) {
+  .desktop-differentiating-table {
+    display: none;
+  }
+  .mobile-differentiating-cards {
+    display: flex;
+  }
+}

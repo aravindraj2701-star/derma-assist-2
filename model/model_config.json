@@ -1,0 +1,16 @@
+{
+  "image_size": 224,
+  "num_classes": 9,
+  "classes": [
+    "Actinic Keratosis",
+    "Basal Cell Carcinoma",
+    "Dermatofibroma",
+    "Melanoma",
+    "Nevus",
+    "Pigmented Benign Keratosis",
+    "Seborrheic Keratosis",
+    "Squamous Cell Carcinoma",
+    "Vascular Lesion"
+  ],
+  "model": "EfficientNetB0"
+}

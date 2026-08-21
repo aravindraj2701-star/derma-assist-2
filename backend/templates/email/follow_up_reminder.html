@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Time for a Clinical Follow-Up Check - DermaAssist</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 24px 0; }
+    .container { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    .header { background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); padding: 32px 24px; text-align: center; color: #ffffff; }
+    .brand { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+    .content { padding: 32px 28px; line-height: 1.6; }
+    .title { font-size: 20px; font-weight: 700; color: #0f172a; margin-top: 0; margin-bottom: 12px; }
+    .alert-box { background: #f0fdfa; border: 1px solid #99f6e4; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px; color: #115e59; }
+    .btn-container { text-align: center; margin: 30px 0; }
+    .btn { display: inline-block; background-color: #0d9488; color: #ffffff !important; font-weight: 700; font-size: 15px; text-decoration: none; padding: 14px 28px; border-radius: 8px; }
+    .footer { padding: 20px; background-color: #f1f5f9; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="brand">🩺 DermaAssist Clinical Reminder</div>
+    </div>
+    <div class="content">
+      <h2 class="title">Time for Your Scheduled Follow-Up Lesion Re-Check</h2>
+      <p>Hello {{ user_name }},</p>
+      <p>This is an automated clinical follow-up reminder regarding your prior skin screening (Case #{{ case_id }}) for <strong>{{ predicted_disease }}</strong>.</p>
+      
+      <div class="alert-box">
+        <strong>Clinical Recommendation:</strong><br>
+        {{ reminder_notes }}
+      </div>
+
+      <p>Regular interval re-scanning helps capture morphological changes (such as size increase, color variegation, or border irregularities) early.</p>
+      
+      <div class="btn-container">
+        <a href="{{ action_url }}" class="btn">🔬 Start Follow-Up Re-Scan</a>
+      </div>
+
+      <p style="font-size: 13px; color: #64748b;">If you have already consulted with a board-certified dermatologist in person, you can mark this reminder as completed in your DermaAssist Dashboard.</p>
+    </div>
+    <div class="footer">
+      &copy; 2026 DermaAssist AI Decision Support System • This is a decision support reminder and does not replace in-person dermatological evaluation.
+    </div>
+  </div>
+</body>
+</html>

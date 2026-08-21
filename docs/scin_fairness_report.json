@@ -1,0 +1,187 @@
+{
+  "evaluation_summary": {
+    "total_test_samples": 92,
+    "top1_accuracy": 0.4239,
+    "top3_accuracy": 0.6522,
+    "top5_accuracy": 0.7717,
+    "micro_f1": 0.3117,
+    "macro_f1": 0.2841,
+    "fairness_gap_fst_top3": 0.0677
+  },
+  "fitzpatrick_fairness_stratification": {
+    "FST I-II (Lighter Tones)": {
+      "sample_count": 33,
+      "percentage_of_test": "35.9%",
+      "top1_accuracy": 0.4848,
+      "top3_accuracy": 0.697,
+      "micro_f1": 0.3189,
+      "macro_f1": 0.3039
+    },
+    "FST III-IV (Intermediate Tones)": {
+      "sample_count": 33,
+      "percentage_of_test": "35.9%",
+      "top1_accuracy": 0.3636,
+      "top3_accuracy": 0.5455,
+      "micro_f1": 0.2905,
+      "macro_f1": 0.2549
+    },
+    "FST V-VI (Darker Tones)": {
+      "sample_count": 17,
+      "percentage_of_test": "18.5%",
+      "top1_accuracy": 0.4118,
+      "top3_accuracy": 0.7647,
+      "micro_f1": 0.3095,
+      "macro_f1": 0.2149
+    },
+    "Unspecified / Other": {
+      "sample_count": 3,
+      "percentage_of_test": "3.3%",
+      "top1_accuracy": 0.0,
+      "top3_accuracy": 0.3333,
+      "micro_f1": 0.1739,
+      "macro_f1": 0.075
+    }
+  },
+  "per_class_performance": [
+    {
+      "class_name": "Eczema",
+      "precision": 0.3333333333333333,
+      "recall": 0.5142857142857142,
+      "f1_score": 0.4044943820224719,
+      "support": 35
+    },
+    {
+      "class_name": "Allergic Contact Dermatitis",
+      "precision": 0.296875,
+      "recall": 0.7037037037037037,
+      "f1_score": 0.4175824175824176,
+      "support": 27
+    },
+    {
+      "class_name": "Psoriasis",
+      "precision": 0.2,
+      "recall": 0.36363636363636365,
+      "f1_score": 0.25806451612903225,
+      "support": 11
+    },
+    {
+      "class_name": "Insect Bite",
+      "precision": 0.2708333333333333,
+      "recall": 0.7647058823529411,
+      "f1_score": 0.4,
+      "support": 17
+    },
+    {
+      "class_name": "Urticaria",
+      "precision": 0.12280701754385964,
+      "recall": 0.5833333333333334,
+      "f1_score": 0.2028985507246377,
+      "support": 12
+    },
+    {
+      "class_name": "Folliculitis",
+      "precision": 0.24528301886792453,
+      "recall": 1.0,
+      "f1_score": 0.3939393939393939,
+      "support": 13
+    },
+    {
+      "class_name": "Irritant Contact Dermatitis",
+      "precision": 0.10344827586206896,
+      "recall": 0.5,
+      "f1_score": 0.17142857142857143,
+      "support": 6
+    },
+    {
+      "class_name": "Tinea",
+      "precision": 0.2564102564102564,
+      "recall": 0.9090909090909091,
+      "f1_score": 0.4,
+      "support": 11
+    },
+    {
+      "class_name": "Herpes Zoster",
+      "precision": 0.17142857142857143,
+      "recall": 1.0,
+      "f1_score": 0.2926829268292683,
+      "support": 6
+    },
+    {
+      "class_name": "Drug Rash",
+      "precision": 0.2,
+      "recall": 0.6,
+      "f1_score": 0.3,
+      "support": 5
+    },
+    {
+      "class_name": "Herpes Simplex",
+      "precision": 0.17647058823529413,
+      "recall": 0.8571428571428571,
+      "f1_score": 0.2926829268292683,
+      "support": 7
+    },
+    {
+      "class_name": "Impetigo",
+      "precision": 0.16326530612244897,
+      "recall": 1.0,
+      "f1_score": 0.2807017543859649,
+      "support": 8
+    },
+    {
+      "class_name": "Acute dermatitis, NOS",
+      "precision": 0.25,
+      "recall": 0.3333333333333333,
+      "f1_score": 0.2857142857142857,
+      "support": 3
+    },
+    {
+      "class_name": "Hypersensitivity",
+      "precision": 0.11764705882352941,
+      "recall": 1.0,
+      "f1_score": 0.21052631578947367,
+      "support": 2
+    },
+    {
+      "class_name": "Acne",
+      "precision": 0.16,
+      "recall": 0.8,
+      "f1_score": 0.26666666666666666,
+      "support": 5
+    },
+    {
+      "class_name": "Pigmented purpuric eruption",
+      "precision": 0.07142857142857142,
+      "recall": 1.0,
+      "f1_score": 0.13333333333333333,
+      "support": 2
+    },
+    {
+      "class_name": "Leukocytoclastic Vasculitis",
+      "precision": 0.1,
+      "recall": 1.0,
+      "f1_score": 0.18181818181818182,
+      "support": 2
+    },
+    {
+      "class_name": "Lichen planus/lichenoid eruption",
+      "precision": 0.16666666666666666,
+      "recall": 0.6666666666666666,
+      "f1_score": 0.26666666666666666,
+      "support": 6
+    },
+    {
+      "class_name": "Pityriasis rosea",
+      "precision": 0.125,
+      "recall": 0.75,
+      "f1_score": 0.21428571428571427,
+      "support": 4
+    },
+    {
+      "class_name": "Viral Exanthem",
+      "precision": 0.18181818181818182,
+      "recall": 1.0,
+      "f1_score": 0.3076923076923077,
+      "support": 4
+    }
+  ]
+}

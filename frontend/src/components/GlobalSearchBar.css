@@ -1,0 +1,282 @@
+/* ============================================================
+   Global Spotlight Search Bar & Modal Styles
+   ============================================================ */
+
+/* Navbar Compact Trigger Button */
+.navbar-search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--teal-50, #f0fdfa);
+  border: 1px solid var(--teal-200, #ccfbf1);
+  border-radius: 9999px;
+  padding: 6px 12px;
+  color: var(--text-secondary, #475569);
+  font-size: 0.825rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.navbar-search-trigger:hover {
+  background-color: var(--teal-100, #ccfbf1);
+  border-color: var(--teal-300, #99f6e4);
+  color: var(--teal-900, #0f766e);
+  transform: translateY(-1px);
+}
+
+.search-trigger-icon {
+  font-size: 0.875rem;
+  color: var(--teal-700, #0d9488);
+}
+
+.search-trigger-text {
+  font-size: 0.8rem;
+  color: var(--text-muted, #64748b);
+}
+
+.search-trigger-kbd {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.05);
+  font-family: inherit;
+  line-height: 1.2;
+}
+
+@media (max-width: 900px) {
+  .search-trigger-text,
+  .search-trigger-kbd {
+    display: none;
+  }
+  .navbar-search-trigger {
+    padding: 6px 8px;
+    border-radius: 50%;
+  }
+}
+
+/* ============================================================
+   Spotlight Modal Overlay (Centered, Backdrop Blurred)
+   ============================================================ */
+
+.spotlight-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  z-index: 999999;
+  animation: spotlightFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes spotlightFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.spotlight-card {
+  width: 100%;
+  max-width: 580px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 75vh;
+  animation: spotlightSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes spotlightSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Search Header inside Modal */
+.spotlight-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  gap: 12px;
+  background-color: #ffffff;
+}
+
+.spotlight-search-icon {
+  font-size: 1.25rem;
+  color: #0d9488;
+  flex-shrink: 0;
+}
+
+.spotlight-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #0f172a;
+  padding: 0;
+  width: 100%;
+}
+
+.spotlight-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.spotlight-close-btn {
+  background: #f1f5f9;
+  border: none;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.spotlight-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Results Body */
+.spotlight-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
+  background-color: #ffffff;
+}
+
+.spotlight-section-title {
+  padding: 8px 18px 6px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spotlight-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  text-decoration: none;
+  color: #0f172a;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.spotlight-item:hover {
+  background-color: #f0fdfa;
+  border-left: 3px solid #0d9488;
+  padding-left: 15px;
+}
+
+.spotlight-item-icon {
+  font-size: 1.25rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid #e2e8f0;
+}
+
+.spotlight-item:hover .spotlight-item-icon {
+  background-color: #ccfbf1;
+  border-color: #99f6e4;
+}
+
+.spotlight-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.spotlight-item-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spotlight-item-subtitle {
+  font-size: 0.775rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spotlight-empty-state {
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.spotlight-loading-state {
+  padding: 2rem;
+  text-align: center;
+  color: #0d9488;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+/* Footer */
+.spotlight-footer {
+  padding: 10px 18px;
+  background-color: #f8fafc;
+  border-top: 1px solid #f1f5f9;
+  font-size: 0.725rem;
+  color: #64748b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.spotlight-footer-shortcuts {
+  display: flex;
+  gap: 12px;
+}
+
+.spotlight-shortcut-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

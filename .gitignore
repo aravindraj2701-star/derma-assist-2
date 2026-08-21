@@ -1,0 +1,124 @@
+# ============================================
+# Git Ignore Configuration — DermaAssist
+# Excludes large files, datasets, weights & dependencies
+# ============================================
+
+# --- Datasets & Heavy Data Files ---
+data/
+dataset/
+*/data/
+*/dataset/
+combined_skin_disease_dataset*.csv
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.gz
+
+# --- Machine Learning Models & Heavy Weights ---
+*.h5
+*.keras
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.bin
+*.tflite
+*.weights
+*.ckpt
+model/*.h5
+model/*.keras
+model/*.pt
+model/reports/
+models/*.h5
+models/*.keras
+models/*.pt
+models/*.pth
+models/reports/
+models/reference_image_embeddings.json
+
+# --- Node Modules & Web Build Outputs ---
+node_modules/
+*/node_modules/
+frontend/node_modules/
+dist/
+*/dist/
+frontend/dist/
+.npm/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Local Databases & Storage ---
+*.db
+*.sqlite
+*.sqlite3
+derma_assist.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# --- User & Clinical Uploads ---
+uploads/
+backend/uploads/
+*/uploads/
+*.pdf
+
+# --- Python & Cache Artifacts ---
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+.eggs/
+build/
+
+# --- Virtual Environments ---
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Testing & Code Quality Tools ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# --- Environment & Secret Credentials ---
+.env
+.env.local
+.env.*.local
+backend/.env
+frontend/.env
+
+# --- IDE & Operating System Artifacts ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# --- Logs ---
+*.log
+logs/

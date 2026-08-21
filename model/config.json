@@ -1,0 +1,8 @@
+{
+  "image_size": 224,
+  "batch_size": 32,
+  "epochs_frozen": 10,
+  "epochs_finetune": 10,
+  "learning_rate": 0.001,
+  "learning_rate_finetune": 0.00001
+}
