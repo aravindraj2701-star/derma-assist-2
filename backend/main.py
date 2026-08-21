@@ -46,14 +46,20 @@ async def lifespan(app: FastAPI):
     init_database()
 
     # Initialize symptom matcher
-    db = SessionLocal()
     try:
-        init_symptom_matcher(db)
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            init_symptom_matcher(db)
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[MATCHER NOTICE] Symptom matcher initialization notice: {e}")
 
     # Start Background Follow-up Reminder Dispatcher Worker
-    start_reminder_background_worker(SessionLocal, interval_seconds=60)
+    try:
+        start_reminder_background_worker(SessionLocal, interval_seconds=60)
+    except Exception as e:
+        print(f"[WORKER NOTICE] Reminder background worker notice: {e}")
 
     # Ensure upload directory exists
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

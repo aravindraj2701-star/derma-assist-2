@@ -6,10 +6,10 @@ from backend.database.models import User, Disease, DiseaseSymptom, CaseHistory, 
 def init_database():
     """Create all tables if they don't exist and apply missing column/constraint migrations."""
     print("[DB] Creating database tables...")
-    Base.metadata.create_all(bind=engine)
-
-    # Check and migrate users table schema in SQLite/PostgreSQL if needed
     try:
+        Base.metadata.create_all(bind=engine)
+
+        # Check and migrate users table schema in SQLite/PostgreSQL if needed
         inspector = inspect(engine)
         if "users" in inspector.get_table_names():
             user_cols = {c["name"]: c for c in inspector.get_columns("users")}
@@ -28,13 +28,10 @@ def init_database():
                     print("[DB] Added missing 'is_active' column to users table.")
 
                 conn.commit()
+        print("[DB] All tables created/verified successfully.")
     except Exception as e:
-        print(f"[DB] Migration check notice: {e}")
-
-    print("[DB] All tables created/verified successfully.")
-
+        print(f"[DB NOTICE] Table initialization notice: {e}")
 
 
 if __name__ == "__main__":
     init_database()
-
