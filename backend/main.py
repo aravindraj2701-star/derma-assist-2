@@ -9,11 +9,20 @@ It does NOT replace professional medical advice, diagnosis, or treatment.
 Always consult a qualified dermatologist for skin-related concerns.
 """
 
+import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
+try:
+    import torch
+    torch.set_num_threads(1)
+except Exception:
+    pass
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import os
 
 from backend.config import settings
 from backend.database.init_db import init_database
