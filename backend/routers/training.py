@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from backend.database.connection import get_db
 from backend.database.models import User
-from backend.services.auth_service import get_current_user
+from backend.services.auth_service import get_current_user, require_admin
 from backend.services.continuous_learning_service import (
     doctor_review_and_approve_candidate,
     get_training_dashboard_stats,
@@ -64,7 +64,7 @@ def review_and_opt_in_case(
 
 @router.get("/admin/stats")
 def get_model_training_stats(
-    current_user: User = Depends(get_current_user),
+    admin_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """
@@ -77,7 +77,7 @@ def get_model_training_stats(
 
 @router.post("/admin/retrain")
 def trigger_model_retraining(
-    current_user: User = Depends(get_current_user),
+    admin_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """
@@ -85,7 +85,7 @@ def trigger_model_retraining(
     Pulls doctor-approved cases, runs fine-tuning simulation,
     evaluates against fixed test benchmark, and promotes only if accuracy/recall improve.
     """
-    result = execute_model_retraining(db=db, admin_id=current_user.user_id)
+    result = execute_model_retraining(db=db, admin_id=admin_user.user_id)
     if result["status"] == "error":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["message"])
     return result
@@ -94,7 +94,7 @@ def trigger_model_retraining(
 @router.post("/admin/rollback")
 def rollback_model_deployment(
     payload: RollbackRequest,
-    current_user: User = Depends(get_current_user),
+    admin_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """

@@ -25,19 +25,18 @@ export default function Navbar() {
     { path: '/analyze', label: 'Analyze', icon: '🔬' },
     { path: '/dataset', label: 'Dataset', icon: '🗂️' },
     { path: '/history', label: 'History', icon: '📋' },
-    { path: '/admin/training', label: 'Training Console', icon: '🧠' },
   ];
 
-  const adminLinks = user?.role === 'admin'
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+  const adminLinks = isAdmin
     ? [{ path: '/admin', label: 'Admin Console', icon: '🛡️' }]
     : [];
 
   const navLinks = [...baseLinks, ...adminLinks];
 
-
   const isLinkActive = (path) => {
     if (path === '/admin') {
-      return location.pathname === '/admin' || location.pathname.startsWith('/admin/users');
+      return location.pathname === '/admin' || location.pathname.startsWith('/admin/');
     }
     return location.pathname === path;
   };

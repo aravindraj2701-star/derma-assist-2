@@ -7,6 +7,7 @@ import './AnalyzePage.css';
 
 // Fitzpatrick phototype options for selection box
 const FITZPATRICK_OPTIONS = [
+  { value: '', label: 'Select Fitzpatrick skin phototype (Optional)' },
   { value: 'Type I — Pale white skin (always burns, never tans)', label: 'Type I — Pale white skin (always burns, never tans)' },
   { value: 'Type II — Fair skin (burns easily, tans minimally)', label: 'Type II — Fair skin (burns easily, tans minimally)' },
   { value: 'Type III — Light brown / Medium tone (gradually tans)', label: 'Type III — Light brown / Medium tone (gradually tans)' },
@@ -74,17 +75,17 @@ export default function AnalyzePage() {
   const [preview, setPreview] = useState(null);
   const [imageInfo, setImageInfo] = useState(null);
 
-  // Free-Text Clinical Symptom State
-  const [bodyPart, setBodyPart] = useState('Left forearm');
-  const [duration, setDuration] = useState('3 weeks');
-  const [textures, setTextures] = useState('Rough and scaly, slightly raised');
-  const [symptoms, setSymptoms] = useState('Intense nocturnal itching with mild redness');
+  // Free-Text Clinical Symptom State — starts completely empty for user input
+  const [bodyPart, setBodyPart] = useState('');
+  const [duration, setDuration] = useState('');
+  const [textures, setTextures] = useState('');
+  const [symptoms, setSymptoms] = useState('');
   const [patientNotes, setPatientNotes] = useState('');
 
-  // Demographics & Fitzpatrick Type
-  const [age, setAge] = useState('34');
-  const [sexAtBirth, setSexAtBirth] = useState('Female');
-  const [fitzpatrickType, setFitzpatrickType] = useState('Type III — Light brown / Medium tone (gradually tans)');
+  // Demographics & Fitzpatrick Type — starts completely empty for user input
+  const [age, setAge] = useState('');
+  const [sexAtBirth, setSexAtBirth] = useState('');
+  const [fitzpatrickType, setFitzpatrickType] = useState('');
 
   // UI state
   const [loading, setLoading] = useState(false);

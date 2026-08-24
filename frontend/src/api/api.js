@@ -1,7 +1,8 @@
 import axios from 'axios';
 
-// Use the Vite proxy in development, direct URL otherwise
-const API_BASE = '/api';
+// Use environment variable in production (e.g. Vercel), fallback to '/api' for Vite dev proxy
+const rawApiUrl = import.meta.env.VITE_API_URL;
+export const API_BASE = rawApiUrl ? rawApiUrl.replace(/\/+$/, '') : '/api';
 
 const api = axios.create({
   baseURL: API_BASE,

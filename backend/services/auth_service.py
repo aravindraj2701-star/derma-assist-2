@@ -108,9 +108,10 @@ def require_admin(
 ) -> User:
     """
     Dependency that enforces strict server-side Admin role check.
+    Allows users with 'admin' or 'super_admin' roles.
     Returns 403 Forbidden for non-admin accounts.
     """
-    if not user or user.role != "admin":
+    if not user or user.role not in ("admin", "super_admin"):
         raise HTTPException(
             status_code=403,
             detail="Administrative privileges required. Access denied.",

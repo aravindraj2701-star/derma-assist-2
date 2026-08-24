@@ -79,9 +79,14 @@ export default function ModelTrainingConsolePage() {
       {/* Header Banner */}
       <div className="training-header-card animate-fade-in">
         <div>
-          <Link to="/dashboard" className="btn btn-secondary btn-sm" style={{ marginBottom: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            ← Back to Dashboard
-          </Link>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <Link to="/admin" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              ← Back to Admin Console
+            </Link>
+            <Link to="/dashboard" className="btn btn-secondary btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              Dashboard
+            </Link>
+          </div>
           <h1 className="training-header-title">
             <span>🧠</span>
             Continuous Learning &amp; Model Training Console

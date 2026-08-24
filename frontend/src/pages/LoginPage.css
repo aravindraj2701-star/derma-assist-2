@@ -232,34 +232,40 @@
   pointer-events: none;
 }
 
-.form-input {
+.auth-card .form-input,
+.login-page .form-input {
   width: 100%;
   padding: 0.75rem 1rem;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid var(--border-default);
+  background: #ffffff !important;
+  border: 1px solid var(--border-default, #e2e8f0);
   border-radius: var(--radius-md);
-  color: var(--text-primary);
+  color: #0f172a !important;
   font-size: 0.95rem;
-  transition: all 0.2s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.form-input.with-icon {
+.auth-card .form-input.with-icon,
+.login-page .form-input.with-icon {
   padding-left: 2.6rem;
 }
 
-.form-input.with-action {
+.auth-card .form-input.with-action,
+.login-page .form-input.with-action {
   padding-right: 2.8rem;
 }
 
-.form-input:focus {
-  outline: none;
-  border-color: var(--primary-500);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-  background: rgba(15, 23, 42, 0.85);
+.auth-card .form-input:focus,
+.login-page .form-input:focus {
+  outline: none !important;
+  border-color: var(--teal-500, #14b8a6) !important;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.18) !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
 }
 
-.form-input::placeholder {
-  color: var(--text-muted);
+.auth-card .form-input::placeholder,
+.login-page .form-input::placeholder {
+  color: #94a3b8 !important;
 }
 
 .password-toggle-btn {

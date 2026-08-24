@@ -75,7 +75,7 @@ function AppRoutes() {
         } />
         {/* Continuous Learning / Model Training Console */}
         <Route path="/admin/training" element={
-          <ProtectedRoute><ModelTrainingConsolePage /></ProtectedRoute>
+          <ProtectedRoute requireAdmin={true}><ModelTrainingConsolePage /></ProtectedRoute>
         } />
 
         {/* Default redirect */}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { adminAPI } from '../api/api';
 import { useAuth } from '../context/AuthContext';
 import './AdminConsolePage.css';
@@ -218,7 +219,7 @@ export default function AdminConsolePage() {
     }
   };
 
-  // --- Reload Database Seed ---
+  // --- Reload Disease Data Seed ---
   const handleReloadDiseaseData = async () => {
     if (!window.confirm('Re-import disease reference database and refresh symptom matcher index?')) return;
     setIsReloadingData(true);
@@ -242,7 +243,7 @@ export default function AdminConsolePage() {
     } else if (r === 'doctor') {
       return <span className="clearance-badge doctor">DOCTOR</span>;
     }
-    return <span className="clearance-badge analyst">PATIENT</span>;
+    return <span className="clearance-badge patient">PATIENT</span>;
   };
 
   // Format Date Enrolled
@@ -257,66 +258,70 @@ export default function AdminConsolePage() {
   };
 
   return (
-    <div className="admin-dark-theme animate-fade-in">
-      <div className="container">
+    <div className="admin-console-page animate-fade-in">
+      <div className="admin-console-container container">
         {/* Toast Alert Notification */}
         {toastMessage && (
           <div
-            style={{
-              position: 'fixed',
-              top: '20px',
-              right: '20px',
-              background: toastMessage.type === 'error' ? '#ef4444' : '#059669',
-              color: '#ffffff',
-              padding: '0.75rem 1.25rem',
-              borderRadius: '8px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-              zIndex: 9999,
-              fontWeight: 600,
-              fontSize: '0.875rem',
-            }}
+            className={`admin-toast-alert ${toastMessage.type === 'error' ? 'toast-error' : 'toast-success'}`}
           >
-            {toastMessage.message}
+            <span>{toastMessage.type === 'error' ? '⚠️' : '✅'}</span>
+            <span>{toastMessage.message}</span>
           </div>
         )}
 
         {/* TOP HEADER SECTION */}
         <div className="admin-header-section">
-          <div>
-            <div className="admin-badge-pill">ADMINISTRATOR CONSOLE</div>
+          <div className="admin-title-area">
+            <div className="admin-badge-pill">
+              <span className="admin-badge-icon">🛡️</span>
+              <span>ADMINISTRATOR CONSOLE</span>
+            </div>
             <h1 className="admin-main-title">Platform Oversight &amp; System Audit</h1>
+            <p className="admin-subtitle">
+              Enterprise clinical governance, user access management, and infrastructure telemetry.
+            </p>
           </div>
 
-          <button
-            type="button"
-            className="btn-refresh-telemetry"
-            onClick={fetchAllData}
-            title="Refresh live system telemetry"
-          >
-            <span>🔄</span> Refresh Telemetry
-          </button>
+          <div className="admin-header-actions">
+            <Link to="/admin/training" className="btn-training-link" title="Open Continuous Learning & Retraining Console">
+              <span>🧠</span> Training Console
+            </Link>
+            <button
+              type="button"
+              className="btn-refresh-telemetry"
+              onClick={fetchAllData}
+              title="Refresh live system telemetry"
+            >
+              <span>🔄</span> Refresh Telemetry
+            </button>
+          </div>
         </div>
 
-        {/* 4 TOP KPI METRIC CARDS (Identical to reference screenshot) */}
+        {/* 4 TOP KPI METRIC CARDS (Clinical Derma Assist Styling) */}
         <div className="admin-kpi-grid">
-          {/* Card 1: Registered Users */}
+          {/* Card 1: Registered Clinicians & Users */}
           <div className="admin-kpi-box">
             <div className="kpi-box-top">
-              <span className="kpi-box-title">REGISTERED ANALYSTS &amp; USERS</span>
+              <span className="kpi-box-title">REGISTERED CLINICIANS &amp; USERS</span>
               <span className="kpi-box-icon">👥</span>
             </div>
             <div className="kpi-box-value">{stats.total_users || 0}</div>
-            <div className="kpi-box-subtext highlight-green">All accounts verified</div>
+            <div className="kpi-box-subtext highlight-green">
+              <span className="dot dot-green"></span> All accounts verified
+            </div>
           </div>
 
-          {/* Card 2: Total Ingested */}
+          {/* Card 2: Total Ingested Cases / Scans */}
           <div className="admin-kpi-box">
             <div className="kpi-box-top">
               <span className="kpi-box-title">TOTAL INGESTED SCANS</span>
               <span className="kpi-box-icon">📄</span>
             </div>
-            <div className="kpi-box-value cyan">{stats.total_cases || stats.logins?.total || 0}</div>
-            <div className="kpi-box-subtext">Encrypted clinical storage</div>
+            <div className="kpi-box-value teal">{stats.total_cases || stats.logins?.total || 0}</div>
+            <div className="kpi-box-subtext">
+              <span className="dot dot-teal"></span> Encrypted clinical storage
+            </div>
           </div>
 
           {/* Card 3: System Health */}
@@ -326,7 +331,9 @@ export default function AdminConsolePage() {
               <span className="kpi-box-icon">🖥️</span>
             </div>
             <div className="kpi-box-value green">{stats.system_health || '99.98%'}</div>
-            <div className="kpi-box-subtext highlight-cyan">FastAPI + ML Core 0 Failures</div>
+            <div className="kpi-box-subtext highlight-teal">
+              <span className="dot dot-green"></span> FastAPI + ML Core 0 Failures
+            </div>
           </div>
 
           {/* Card 4: Inference Engine */}
@@ -336,7 +343,9 @@ export default function AdminConsolePage() {
               <span className="kpi-box-icon">🧠</span>
             </div>
             <div className="kpi-box-value">{stats.inference_speed || '< 0.38s'}</div>
-            <div className="kpi-box-subtext">PyTorch SCIN Multi-Modal pipeline</div>
+            <div className="kpi-box-subtext">
+              <span className="dot dot-purple"></span> PyTorch SCIN Multi-Modal pipeline
+            </div>
           </div>
         </div>
 
@@ -348,6 +357,7 @@ export default function AdminConsolePage() {
             onClick={() => setActiveView('users')}
           >
             <span>👥</span> Clinical Users &amp; Role Access
+            <span className="tab-count-pill">{usersTotal || stats.total_users || 0}</span>
           </button>
           <button
             type="button"
@@ -372,27 +382,42 @@ export default function AdminConsolePage() {
             <div className="admin-card-header">
               <div className="card-title-group">
                 <span className="icon">👥</span>
-                <span>Forensic Analysts &amp; Role Access</span>
+                <div>
+                  <h3 className="card-heading">Clinical Users &amp; Role Access</h3>
+                  <p className="card-subheading">Manage clinician authorization, patient accounts, and clearance levels</p>
+                </div>
               </div>
 
               <div className="card-controls-row">
                 {/* Search Box */}
-                <div className="dark-search-box">
-                  <span className="dark-search-icon">🔍</span>
+                <div className="clinical-search-box">
+                  <span className="search-icon">🔍</span>
                   <input
                     type="text"
-                    placeholder="Search analysts / users..."
+                    placeholder="Search clinical users..."
                     value={userSearch}
                     onChange={(e) => {
                       setUserSearch(e.target.value);
                       setUsersPage(1);
                     }}
                   />
+                  {userSearch && (
+                    <button
+                      type="button"
+                      className="search-clear-btn"
+                      onClick={() => {
+                        setUserSearch('');
+                        setUsersPage(1);
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
 
                 {/* Role Filter */}
                 <select
-                  className="dark-select"
+                  className="clinical-select"
                   value={userRoleFilter}
                   onChange={(e) => {
                     setUserRoleFilter(e.target.value);
@@ -400,15 +425,15 @@ export default function AdminConsolePage() {
                   }}
                 >
                   <option value="">All Roles</option>
-                  <option value="patient">Patients / Analysts</option>
-                  <option value="doctor">Doctors</option>
+                  <option value="patient">Patients / Users</option>
+                  <option value="doctor">Doctors / Clinicians</option>
                   <option value="admin">Administrators</option>
                   <option value="super_admin">Super Admins</option>
                 </select>
 
                 {/* Sort Filter */}
                 <select
-                  className="dark-select"
+                  className="clinical-select"
                   value={userSort}
                   onChange={(e) => setUserSort(e.target.value)}
                 >
@@ -422,20 +447,20 @@ export default function AdminConsolePage() {
                 {/* Enroll User Primary Action Button */}
                 <button
                   type="button"
-                  className="btn-enroll-analyst"
+                  className="btn-enroll-user"
                   onClick={() => setIsEnrollModalOpen(true)}
                 >
-                  <span>➕</span> Enroll Analyst
+                  <span>➕</span> Enroll User
                 </button>
               </div>
             </div>
 
             {/* Users Data Table */}
-            <div className="dark-table-wrapper">
-              <table className="dark-table">
+            <div className="clinical-table-wrapper">
+              <table className="admin-data-table">
                 <thead>
                   <tr>
-                    <th>ANALYST NAME</th>
+                    <th>CLINICAL USER</th>
                     <th>EMAIL ADDRESS</th>
                     <th>CLEARANCE ROLE</th>
                     <th>DATE ENROLLED</th>
@@ -445,8 +470,9 @@ export default function AdminConsolePage() {
                 <tbody>
                   {isUsersLoading ? (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
-                        Loading user accounts telemetry...
+                      <td colSpan={5} className="table-loading-cell">
+                        <div className="table-spinner"></div>
+                        <span>Loading user accounts telemetry...</span>
                       </td>
                     </tr>
                   ) : users.length > 0 ? (
@@ -473,16 +499,24 @@ export default function AdminConsolePage() {
                               : 'Demote to Admin';
 
                       return (
-                        <tr key={u.user_id} onClick={() => openUserDossier(u.user_id)}>
-                          {/* Name */}
+                        <tr
+                          key={u.user_id}
+                          className={`table-row-item ${!u.is_active ? 'row-suspended' : ''}`}
+                          onClick={() => openUserDossier(u.user_id)}
+                        >
+                          {/* Name with Avatar */}
                           <td>
-                            <div className="analyst-name-cell">
-                              <div className="analyst-avatar-micro">
+                            <div className="user-name-cell">
+                              <div className={`user-avatar-micro ${u.role}`}>
                                 {u.name?.charAt(0)?.toUpperCase() || '?'}
                               </div>
-                              <span>
-                                {u.name} {isSelf && <small style={{ color: '#38bdf8' }}>(You)</small>}
-                              </span>
+                              <div className="user-name-info">
+                                <span className="user-primary-name">
+                                  {u.name}
+                                </span>
+                                {isSelf && <span className="self-tag">(You)</span>}
+                                {!u.is_active && <span className="suspended-pill">Suspended</span>}
+                              </div>
                             </div>
                           </td>
 
@@ -493,11 +527,11 @@ export default function AdminConsolePage() {
                           <td>{renderRoleBadge(u.role)}</td>
 
                           {/* Date Enrolled */}
-                          <td>{formatDate(u.created_at)}</td>
+                          <td className="date-enrolled-cell">{formatDate(u.created_at)}</td>
 
-                          {/* Action Button */}
+                          {/* Action Buttons */}
                           <td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                            <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                            <div className="table-actions-group">
                               <button
                                 type="button"
                                 className="btn-role-action"
@@ -511,19 +545,28 @@ export default function AdminConsolePage() {
                                   });
                                 }}
                                 disabled={isSelf && u.role === 'super_admin'}
+                                title={`Change role to ${nextRole}`}
                               >
                                 {roleActionLabel}
                               </button>
 
                               <button
                                 type="button"
-                                className="btn-role-action"
-                                style={{ color: u.is_active ? '#f87171' : '#4ade80' }}
+                                className={`btn-status-toggle ${u.is_active ? 'btn-suspend' : 'btn-activate'}`}
                                 onClick={() => handleToggleStatus(u)}
                                 disabled={isSelf}
                                 title={u.is_active ? 'Suspend Account' : 'Reactivate Account'}
                               >
                                 {u.is_active ? 'Suspend' : 'Activate'}
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn-dossier-inspect"
+                                onClick={() => openUserDossier(u.user_id)}
+                                title="Inspect user dossier & history"
+                              >
+                                🔍
                               </button>
                             </div>
                           </td>
@@ -532,8 +575,10 @@ export default function AdminConsolePage() {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
-                        No user accounts matched the filter query.
+                      <td colSpan={5} className="table-empty-cell">
+                        <span className="empty-icon">👥</span>
+                        <p className="empty-title">No user accounts matched the filter query.</p>
+                        <p className="empty-sub">Try searching with a different keyword or reset role filters.</p>
                       </td>
                     </tr>
                   )}
@@ -543,36 +588,29 @@ export default function AdminConsolePage() {
 
             {/* Pagination footer */}
             {usersPages > 1 && (
-              <div
-                style={{
-                  padding: '1rem 1.5rem',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  borderTop: '1px solid #1f2937',
-                  fontSize: '0.85rem',
-                }}
-              >
-                <span style={{ color: '#94a3b8' }}>
+              <div className="table-pagination-footer">
+                <span className="pagination-info">
                   Showing {users.length} of {usersTotal} user accounts
                 </span>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <div className="pagination-controls">
                   <button
-                    className="btn-role-action"
+                    type="button"
+                    className="pagination-btn"
                     disabled={usersPage <= 1}
                     onClick={() => setUsersPage((p) => p - 1)}
                   >
-                    Previous
+                    ← Previous
                   </button>
-                  <span style={{ padding: '0.35rem 0.65rem', color: '#cbd5e1', fontWeight: 600 }}>
+                  <span className="pagination-current-page">
                     Page {usersPage} of {usersPages}
                   </span>
                   <button
-                    className="btn-role-action"
+                    type="button"
+                    className="pagination-btn"
                     disabled={usersPage >= usersPages}
                     onClick={() => setUsersPage((p) => p + 1)}
                   >
-                    Next
+                    Next →
                   </button>
                 </div>
               </div>
@@ -586,11 +624,14 @@ export default function AdminConsolePage() {
             <div className="admin-card-header">
               <div className="card-title-group">
                 <span className="icon">🖥️</span>
-                <span>System Infrastructure Health Matrix &amp; Maintenance</span>
+                <div>
+                  <h3 className="card-heading">System Infrastructure Health Matrix &amp; Maintenance</h3>
+                  <p className="card-subheading">Core runtime status, model inference health, and diagnostic controls</p>
+                </div>
               </div>
               <button
                 type="button"
-                className="btn-enroll-analyst"
+                className="btn-enroll-user"
                 onClick={handleReloadDiseaseData}
                 disabled={isReloadingData}
               >
@@ -600,42 +641,42 @@ export default function AdminConsolePage() {
 
             <div className="health-matrix-grid">
               <div className="health-item-box">
-                <h4>
-                  <span>FastAPI Core Gateway</span>
-                  <span style={{ color: '#10b981' }}>🟢 Online</span>
-                </h4>
-                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
-                  High-throughput asynchronous REST API routing with automatic OpenAPI schema validation.
+                <div className="health-box-header">
+                  <span className="service-name">FastAPI Core Gateway</span>
+                  <span className="service-status online">🟢 Online</span>
+                </div>
+                <p className="service-desc">
+                  High-throughput asynchronous REST API routing with automatic OpenAPI schema validation and JWT middleware.
                 </p>
               </div>
 
               <div className="health-item-box">
-                <h4>
-                  <span>PostgreSQL Database</span>
-                  <span style={{ color: '#10b981' }}>🟢 Connected</span>
-                </h4>
-                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
-                  Relational storage for clinical case histories, user accounts, and immutable audit logs.
+                <div className="health-box-header">
+                  <span className="service-name">PostgreSQL / SQLite Storage</span>
+                  <span className="service-status online">🟢 Connected</span>
+                </div>
+                <p className="service-desc">
+                  Relational storage for clinical case histories, dermatology reference data, and immutable security audit logs.
                 </p>
               </div>
 
               <div className="health-item-box">
-                <h4>
-                  <span>PyTorch SCIN ML Engine</span>
-                  <span style={{ color: '#10b981' }}>🟢 Operational</span>
-                </h4>
-                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
-                  Deep learning multi-modal inference pipeline with Grad-CAM visual explainability.
+                <div className="health-box-header">
+                  <span className="service-name">PyTorch SCIN ML Engine</span>
+                  <span className="service-status online">🟢 Operational</span>
+                </div>
+                <p className="service-desc">
+                  Deep learning multi-modal inference pipeline with Grad-CAM visual explainability and Top-5 diagnostic ranking.
                 </p>
               </div>
 
               <div className="health-item-box">
-                <h4>
-                  <span>RBAC Security Enforcer</span>
-                  <span style={{ color: '#10b981' }}>🟢 Active</span>
-                </h4>
-                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
-                  Cryptographic JWT validation with role protection and lockout safeguards.
+                <div className="health-box-header">
+                  <span className="service-name">RBAC Security Enforcer</span>
+                  <span className="service-status online">🟢 Active</span>
+                </div>
+                <p className="service-desc">
+                  Cryptographic JWT validation with role protection, session expiry safeguards, and account lockout defenses.
                 </p>
               </div>
             </div>
@@ -648,12 +689,15 @@ export default function AdminConsolePage() {
             <div className="admin-card-header">
               <div className="card-title-group">
                 <span className="icon">🛡️</span>
-                <span>Administrative Action Audit Trail</span>
+                <div>
+                  <h3 className="card-heading">Administrative Action Audit Trail</h3>
+                  <p className="card-subheading">Immutable log of security modifications, role promotions, and user management events</p>
+                </div>
               </div>
             </div>
 
-            <div className="dark-table-wrapper">
-              <table className="dark-table">
+            <div className="clinical-table-wrapper">
+              <table className="admin-data-table">
                 <thead>
                   <tr>
                     <th>TIMESTAMP</th>
@@ -666,41 +710,34 @@ export default function AdminConsolePage() {
                 <tbody>
                   {isAuditLoading ? (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                        Loading audit trail events...
+                      <td colSpan={5} className="table-loading-cell">
+                        <div className="table-spinner"></div>
+                        <span>Loading audit trail events...</span>
                       </td>
                     </tr>
                   ) : auditLogs.length > 0 ? (
                     auditLogs.map((log) => (
                       <tr key={log.id}>
-                        <td style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#94a3b8' }}>
+                        <td className="log-timestamp-cell">
                           {log.timestamp ? new Date(log.timestamp).toLocaleString() : '—'}
                         </td>
-                        <td style={{ fontWeight: 600, color: '#ffffff' }}>
+                        <td className="log-admin-name">
                           {log.admin_name || `Admin #${log.admin_id}`}
                         </td>
                         <td>
-                          <span
-                            style={{
-                              padding: '0.2rem 0.5rem',
-                              background: '#1e293b',
-                              borderRadius: '4px',
-                              fontSize: '0.75rem',
-                              fontWeight: 700,
-                              color: '#38bdf8',
-                            }}
-                          >
-                            {log.action}
-                          </span>
+                          <span className="audit-action-pill">{log.action}</span>
                         </td>
-                        <td>{log.target_name || (log.target_user_id ? `User #${log.target_user_id}` : 'System')}</td>
-                        <td style={{ color: '#cbd5e1', fontSize: '0.8rem' }}>{log.details}</td>
+                        <td className="log-target-cell">
+                          {log.target_name || (log.target_user_id ? `User #${log.target_user_id}` : 'System')}
+                        </td>
+                        <td className="log-details-cell">{log.details}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
-                        No administrative audit events recorded yet.
+                      <td colSpan={5} className="table-empty-cell">
+                        <span className="empty-icon">🛡️</span>
+                        <p className="empty-title">No administrative audit events recorded yet.</p>
                       </td>
                     </tr>
                   )}
@@ -713,10 +750,13 @@ export default function AdminConsolePage() {
 
       {/* ENROLL USER MODAL */}
       {isEnrollModalOpen && (
-        <div className="dark-modal-overlay">
-          <div className="dark-modal-card">
-            <div className="dark-modal-header">
-              <h3>➕ Enroll New Analyst / User Account</h3>
+        <div className="clinical-modal-overlay">
+          <div className="clinical-modal-card">
+            <div className="clinical-modal-header">
+              <div className="modal-title-wrap">
+                <span className="modal-icon">➕</span>
+                <h3>Enroll New Clinical User</h3>
+              </div>
               <button
                 type="button"
                 className="btn-close-modal"
@@ -727,24 +767,15 @@ export default function AdminConsolePage() {
             </div>
 
             <form onSubmit={handleEnrollUser}>
-              <div className="dark-modal-body">
+              <div className="clinical-modal-body">
                 {enrollError && (
-                  <div
-                    style={{
-                      background: 'rgba(239, 68, 68, 0.2)',
-                      border: '1px solid #ef4444',
-                      color: '#fca5a5',
-                      padding: '0.65rem 0.85rem',
-                      borderRadius: '6px',
-                      fontSize: '0.825rem',
-                    }}
-                  >
+                  <div className="modal-error-alert">
                     ⚠️ {enrollError}
                   </div>
                 )}
 
-                <div className="dark-form-group">
-                  <label>Full Name / Analyst Handle</label>
+                <div className="clinical-form-group">
+                  <label>Full Name</label>
                   <input
                     type="text"
                     placeholder="e.g. Dr. Alex Morgan"
@@ -754,18 +785,18 @@ export default function AdminConsolePage() {
                   />
                 </div>
 
-                <div className="dark-form-group">
+                <div className="clinical-form-group">
                   <label>Email Address</label>
                   <input
                     type="email"
-                    placeholder="e.g. alex.morgan@forensics.org"
+                    placeholder="e.g. alex.morgan@dermaassist.com"
                     value={enrollForm.email}
                     onChange={(e) => setEnrollForm({ ...enrollForm, email: e.target.value })}
                     required
                   />
                 </div>
 
-                <div className="dark-form-group">
+                <div className="clinical-form-group">
                   <label>Initial Temporary Password</label>
                   <input
                     type="password"
@@ -776,14 +807,14 @@ export default function AdminConsolePage() {
                   />
                 </div>
 
-                <div className="dark-form-group">
+                <div className="clinical-form-group">
                   <label>Clearance Role Assignment</label>
                   <select
                     value={enrollForm.role}
                     onChange={(e) => setEnrollForm({ ...enrollForm, role: e.target.value })}
                   >
-                    <option value="patient">Patient / Forensic Analyst</option>
-                    <option value="doctor">Attending Doctor</option>
+                    <option value="patient">Patient / Standard User</option>
+                    <option value="doctor">Attending Doctor / Dermatologist</option>
                     <option value="admin">Administrator</option>
                     {currentAdmin?.role === 'super_admin' && (
                       <option value="super_admin">Super Administrator</option>
@@ -792,20 +823,20 @@ export default function AdminConsolePage() {
                 </div>
               </div>
 
-              <div className="dark-modal-footer">
+              <div className="clinical-modal-footer">
                 <button
                   type="button"
-                  className="btn-role-action"
+                  className="btn-modal-cancel"
                   onClick={() => setIsEnrollModalOpen(false)}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn-enroll-analyst"
+                  className="btn-modal-submit"
                   disabled={isEnrolling}
                 >
-                  {isEnrolling ? 'Enrolling...' : 'Enroll Account'}
+                  {isEnrolling ? 'Enrolling...' : 'Enroll User'}
                 </button>
               </div>
             </form>
@@ -815,10 +846,13 @@ export default function AdminConsolePage() {
 
       {/* ROLE CHANGE CONFIRMATION MODAL */}
       {roleModal.isOpen && (
-        <div className="dark-modal-overlay">
-          <div className="dark-modal-card">
-            <div className="dark-modal-header">
-              <h3>🛡️ Modify Account Clearance Role</h3>
+        <div className="clinical-modal-overlay">
+          <div className="clinical-modal-card">
+            <div className="clinical-modal-header">
+              <div className="modal-title-wrap">
+                <span className="modal-icon">🛡️</span>
+                <h3>Modify Account Clearance Role</h3>
+              </div>
               <button
                 type="button"
                 className="btn-close-modal"
@@ -828,34 +862,25 @@ export default function AdminConsolePage() {
               </button>
             </div>
 
-            <div className="dark-modal-body">
+            <div className="clinical-modal-body">
               {roleModal.errorMessage && (
-                <div
-                  style={{
-                    background: 'rgba(239, 68, 68, 0.2)',
-                    border: '1px solid #ef4444',
-                    color: '#fca5a5',
-                    padding: '0.65rem 0.85rem',
-                    borderRadius: '6px',
-                    fontSize: '0.825rem',
-                  }}
-                >
+                <div className="modal-error-alert">
                   ⚠️ {roleModal.errorMessage}
                 </div>
               )}
 
-              <p style={{ color: '#cbd5e1', fontSize: '0.9rem', margin: 0 }}>
+              <p className="modal-intro-text">
                 Update clearance role for account: <strong>{roleModal.targetUser?.email}</strong>
               </p>
 
-              <div className="dark-form-group">
+              <div className="clinical-form-group">
                 <label>Select Target Role</label>
                 <select
                   value={roleModal.newRole}
                   onChange={(e) => setRoleModal({ ...roleModal, newRole: e.target.value })}
                 >
-                  <option value="patient">Patient / Analyst</option>
-                  <option value="doctor">Attending Doctor</option>
+                  <option value="patient">Patient / Standard User</option>
+                  <option value="doctor">Attending Doctor / Dermatologist</option>
                   <option value="admin">Administrator</option>
                   {currentAdmin?.role === 'super_admin' && (
                     <option value="super_admin">Super Administrator</option>
@@ -864,17 +889,17 @@ export default function AdminConsolePage() {
               </div>
             </div>
 
-            <div className="dark-modal-footer">
+            <div className="clinical-modal-footer">
               <button
                 type="button"
-                className="btn-role-action"
+                className="btn-modal-cancel"
                 onClick={() => setRoleModal({ isOpen: false, targetUser: null, newRole: '', isLoading: false, errorMessage: '' })}
               >
                 Cancel
               </button>
               <button
                 type="button"
-                className="btn-enroll-analyst"
+                className="btn-modal-submit"
                 onClick={handleConfirmRoleChange}
                 disabled={roleModal.isLoading}
               >
@@ -887,10 +912,13 @@ export default function AdminConsolePage() {
 
       {/* USER DOSSIER INSPECTION MODAL */}
       {selectedUserId && (
-        <div className="dark-modal-overlay">
-          <div className="dark-modal-card" style={{ maxWidth: '680px' }}>
-            <div className="dark-modal-header">
-              <h3>🔍 User Inspection &amp; Audit Dossier</h3>
+        <div className="clinical-modal-overlay">
+          <div className="clinical-modal-card modal-card-wide">
+            <div className="clinical-modal-header">
+              <div className="modal-title-wrap">
+                <span className="modal-icon">🔍</span>
+                <h3>Clinical User Inspection Dossier</h3>
+              </div>
               <button
                 type="button"
                 className="btn-close-modal"
@@ -903,48 +931,72 @@ export default function AdminConsolePage() {
               </button>
             </div>
 
-            <div className="dark-modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+            <div className="clinical-modal-body modal-scrollable">
               {isDossierLoading ? (
-                <p style={{ color: '#94a3b8', textAlign: 'center' }}>Loading user dossier details...</p>
+                <div className="modal-loading-state">
+                  <div className="table-spinner"></div>
+                  <p>Loading user dossier details...</p>
+                </div>
               ) : userDossier ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {/* Profile info */}
-                  <div style={{ background: '#0f172a', padding: '1rem', borderRadius: '8px', border: '1px solid #1e293b' }}>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#ffffff' }}>{userDossier.user?.name}</h4>
-                    <div style={{ fontSize: '0.85rem', color: '#94a3b8', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      <div>Email: <strong style={{ color: '#ffffff' }}>{userDossier.user?.email}</strong></div>
-                      <div>User ID: <strong>#{userDossier.user?.user_id}</strong></div>
-                      <div>Role: {renderRoleBadge(userDossier.user?.role)}</div>
-                      <div>Status: <strong>{userDossier.user?.is_active ? '🟢 Active' : '🔴 Suspended'}</strong></div>
-                      <div>Last Login: <strong>{userDossier.user?.last_login_at ? new Date(userDossier.user.last_login_at).toLocaleString() : 'Never'}</strong></div>
+                <div className="dossier-content-wrapper">
+                  {/* Profile info Card */}
+                  <div className="dossier-profile-card">
+                    <div className="dossier-header-row">
+                      <div className="dossier-avatar">
+                        {userDossier.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                      <div>
+                        <h4 className="dossier-user-name">{userDossier.user?.name}</h4>
+                        <span className="dossier-user-email">{userDossier.user?.email}</span>
+                      </div>
+                    </div>
+
+                    <div className="dossier-details-grid">
+                      <div className="dossier-detail-item">
+                        <span className="detail-label">User ID</span>
+                        <span className="detail-value">#{userDossier.user?.user_id}</span>
+                      </div>
+                      <div className="dossier-detail-item">
+                        <span className="detail-label">Role</span>
+                        <span className="detail-value">{renderRoleBadge(userDossier.user?.role)}</span>
+                      </div>
+                      <div className="dossier-detail-item">
+                        <span className="detail-label">Status</span>
+                        <span className="detail-value">
+                          {userDossier.user?.is_active ? (
+                            <span className="badge-active">🟢 Active</span>
+                          ) : (
+                            <span className="badge-suspended">🔴 Suspended</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="dossier-detail-item">
+                        <span className="detail-label">Last Login</span>
+                        <span className="detail-value">
+                          {userDossier.user?.last_login_at ? new Date(userDossier.user.last_login_at).toLocaleString() : 'Never'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Recent Login History */}
-                  <div>
-                    <h5 style={{ color: '#38bdf8', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Recent Login Activity (Last 10)</h5>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <div className="dossier-section">
+                    <h5 className="dossier-section-title">Recent Login Activity (Last 10)</h5>
+                    <div className="dossier-logins-list">
                       {userDossier.login_history && userDossier.login_history.length > 0 ? (
                         userDossier.login_history.slice(0, 10).map((lh, i) => (
-                          <div
-                            key={i}
-                            style={{
-                              padding: '0.4rem 0.65rem',
-                              background: '#0f172a',
-                              borderRadius: '4px',
-                              fontSize: '0.75rem',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                            }}
-                          >
-                            <span style={{ color: lh.success ? '#10b981' : '#ef4444' }}>
+                          <div key={i} className="login-history-row">
+                            <span className={`login-status-badge ${lh.success ? 'status-success' : 'status-failed'}`}>
                               {lh.success ? '✅ Success' : `❌ ${lh.failure_reason || 'Failed'}`}
                             </span>
-                            <span style={{ color: '#94a3b8' }}>{lh.login_at ? new Date(lh.login_at).toLocaleString() : '—'}</span>
+                            <span className="login-timestamp">
+                              {lh.login_at ? new Date(lh.login_at).toLocaleString() : '—'}
+                            </span>
+                            <span className="login-ip">{lh.ip_address || '127.0.0.1'}</span>
                           </div>
                         ))
                       ) : (
-                        <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>No login activity recorded.</p>
+                        <p className="no-history-text">No login activity recorded.</p>
                       )}
                     </div>
                   </div>
@@ -952,10 +1004,10 @@ export default function AdminConsolePage() {
               ) : null}
             </div>
 
-            <div className="dark-modal-footer">
+            <div className="clinical-modal-footer">
               <button
                 type="button"
-                className="btn-role-action"
+                className="btn-modal-cancel"
                 onClick={() => {
                   setSelectedUserId(null);
                   setUserDossier(null);
