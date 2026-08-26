@@ -38,9 +38,9 @@ from backend.services.reminder_service import start_reminder_background_worker
 async def lifespan(app: FastAPI):
     """Startup and shutdown lifecycle events."""
     # --- Startup ---
-    print("=" * 60)
-    print("  DERMA ASSIST — Starting up...")
-    print("=" * 60)
+    print("=" * 60, flush=True)
+    print("  DERMA ASSIST — Starting up...", flush=True)
+    print("=" * 60, flush=True)
 
     # Initialize database tables
     init_database()
@@ -53,28 +53,28 @@ async def lifespan(app: FastAPI):
         finally:
             db.close()
     except Exception as e:
-        print(f"[MATCHER NOTICE] Symptom matcher initialization notice: {e}")
+        print(f"[MATCHER NOTICE] Symptom matcher initialization notice: {e}", flush=True)
 
     # Start Background Follow-up Reminder Dispatcher Worker
     try:
         start_reminder_background_worker(SessionLocal, interval_seconds=60)
     except Exception as e:
-        print(f"[WORKER NOTICE] Reminder background worker notice: {e}")
+        print(f"[WORKER NOTICE] Reminder background worker notice: {e}", flush=True)
 
     # Ensure upload directory exists
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
-    print(f"  Environment: {settings.APP_ENV}")
-    print(f"  LLM Provider: {settings.LLM_PROVIDER}")
-    print(f"  Model Path: {settings.MODEL_PATH}")
-    print("=" * 60)
-    print("  DERMA ASSIST — Ready!")
-    print("=" * 60)
+    print(f"  Environment: {settings.APP_ENV}", flush=True)
+    print(f"  LLM Provider: {settings.LLM_PROVIDER}", flush=True)
+    print(f"  Model Path: {settings.MODEL_PATH}", flush=True)
+    print("=" * 60, flush=True)
+    print("  DERMA ASSIST — Ready!", flush=True)
+    print("=" * 60, flush=True)
 
     yield
 
     # --- Shutdown ---
-    print("[APP] Shutting down...")
+    print("[APP] Shutting down...", flush=True)
 
 
 # Create FastAPI app
@@ -92,6 +92,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
+    allow_origin_regex=r"https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
