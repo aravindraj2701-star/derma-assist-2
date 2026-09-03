@@ -28,6 +28,23 @@ def init_database():
                     print("[DB] Added missing 'is_active' column to users table.")
 
                 conn.commit()
+
+        # Auto-seed diseases and symptoms if empty
+        from backend.database.connection import SessionLocal
+        from backend.config import settings
+        db = SessionLocal()
+        try:
+            if db.query(Disease).count() == 0:
+                print("[DB] Empty database detected. Auto-seeding initial disease and symptom datasets...")
+                from backend.database.seed_database import seed_diseases, seed_symptoms
+                name_to_id = seed_diseases(db, settings.DISEASES_CSV)
+                seed_symptoms(db, settings.SYMPTOMS_CSV, name_to_id)
+                print("[DB] Auto-seeding completed successfully.")
+        except Exception as seed_err:
+            print(f"[DB NOTICE] Auto-seed notice: {seed_err}")
+        finally:
+            db.close()
+
         print("[DB] All tables created/verified successfully.")
     except Exception as e:
         print(f"[DB NOTICE] Table initialization notice: {e}")

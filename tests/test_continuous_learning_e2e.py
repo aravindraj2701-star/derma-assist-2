@@ -33,7 +33,7 @@ def test_continuous_learning_full_cycle():
     email = f"clinician_cl_{uuid.uuid4().hex[:6]}@dermaassist.ai"
     reg_res = client.post(
         "/auth/register",
-        json={"name": "Dr. Alan Turing", "email": email, "password": "SecurePassword123!"},
+        json={"name": "Dr. Alan Turing", "email": email, "password": "SecurePassword123!", "role": "admin"},
     )
     assert reg_res.status_code == 200, f"Register failed: {reg_res.text}"
     token = reg_res.json()["access_token"]
