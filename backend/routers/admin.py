@@ -34,8 +34,8 @@ class RoleUpdateRequest(BaseModel):
     @classmethod
     def validate_role(cls, v: str) -> str:
         val = v.strip().lower()
-        if val not in ("patient", "doctor", "admin", "super_admin"):
-            raise ValueError("Role must be one of: 'patient', 'doctor', 'admin', 'super_admin'")
+        if val not in ("patient", "doctor", "admin"):
+            raise ValueError("Role must be one of: 'patient', 'doctor', 'admin'")
         return val
 
 
@@ -72,7 +72,6 @@ def get_admin_dashboard_stats(
     patient_count = db.query(func.count(User.user_id)).filter(User.role == "patient").scalar() or 0
     doctor_count = db.query(func.count(User.user_id)).filter(User.role == "doctor").scalar() or 0
     admin_count = db.query(func.count(User.user_id)).filter(User.role == "admin").scalar() or 0
-    super_admin_count = db.query(func.count(User.user_id)).filter(User.role == "super_admin").scalar() or 0
 
     total_logins = db.query(func.count(LoginActivity.id)).scalar() or 0
     failed_logins = db.query(func.count(LoginActivity.id)).filter(LoginActivity.success == False).scalar() or 0
@@ -86,6 +85,7 @@ def get_admin_dashboard_stats(
     )
 
     total_cases = db.query(func.count(CaseHistory.case_id)).scalar() or 0
+    super_admin_count = db.query(func.count(User.user_id)).filter(User.role == "super_admin").scalar() or 0
 
     return {
         "total_users": total_users,
@@ -94,7 +94,7 @@ def get_admin_dashboard_stats(
         "total_cases": total_cases,
         "system_health": "99.98%",
         "inference_speed": "< 0.38s",
-        "pipeline_name": "PyTorch SCIN Multi-Modal pipeline",
+        "pipeline_name": "EfficientNetB0 + SCIN Multimodal",
         "roles": {
             "patient": patient_count,
             "doctor": doctor_count,
@@ -143,12 +143,6 @@ def enroll_user(
     if len(request.password) < 6:
         raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
 
-    if request.role == "super_admin" and admin_user.role != "super_admin":
-        raise HTTPException(
-            status_code=403,
-            detail="Only a Super Administrator can enroll a new Super Admin account.",
-        )
-
     existing = db.query(User).filter(User.email == clean_email).first()
     if existing:
         raise HTTPException(status_code=400, detail="An account with this email address already exists.")
@@ -186,9 +180,9 @@ def list_users(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     search: Optional[str] = Query(None, description="Search by name or email"),
-    role: Optional[str] = Query(None, description="Filter by role: patient/doctor/admin/super_admin"),
+    role: Optional[str] = Query(None, description="Filter by role: patient/doctor/admin"),
     status: Optional[str] = Query(None, description="Filter by status: active/suspended"),
-    sort: Optional[str] = Query(None, description="Sort: name_asc, name_desc, date_desc, date_asc, role"),
+    sort: Optional[str] = Query(None, description="Sort order: name_asc, name_desc, date_desc, date_asc, role"),
     admin_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
@@ -223,7 +217,7 @@ def list_users(
         query = query.order_by(User.created_at.asc())
     elif sort == "role":
         query = query.order_by(User.role.asc())
-    else:  # date_desc default
+    else:
         query = query.order_by(desc(User.created_at))
 
     users = query.offset(offset).limit(limit).all()
@@ -328,10 +322,8 @@ def update_user_role(
     db: Session = Depends(get_db),
 ):
     """
-    Change a user's role (patient / doctor / admin / super_admin).
-    Guarded: 
-    - Only a Super Admin can promote/demote a Super Admin.
-    - Blocks role change if it would leave ZERO active admins or super admins.
+    Change a user's role (patient / doctor / admin).
+    Guarded: Blocks role change if it would leave ZERO active admins in the system.
     """
     target = db.query(User).filter(User.user_id == user_id).first()
     if not target:
@@ -346,32 +338,11 @@ def update_user_role(
             "user": target.to_dict(),
         }
 
-    # SAFETY CHECK: Only Super Admins can assign or revoke super_admin role
-    if (new_role == "super_admin" or old_role == "super_admin") and admin_user.role != "super_admin":
-        raise HTTPException(
-            status_code=403,
-            detail="Administrative privilege restriction: Only a Super Administrator can assign or revoke the Super Admin role.",
-        )
-
-    # SAFETY CHECK: If demoting a super_admin, verify another active super_admin exists
-    if old_role == "super_admin" and new_role != "super_admin":
-        active_super_admins_count = (
-            db.query(func.count(User.user_id))
-            .filter(User.role == "super_admin", User.is_active == True, User.user_id != user_id)
-            .scalar()
-            or 0
-        )
-        if active_super_admins_count < 1:
-            raise HTTPException(
-                status_code=400,
-                detail="Security lockout prevention: Cannot demote the last remaining active Super Administrator account.",
-            )
-
-    # SAFETY CHECK: If demoting an admin, verify there is at least one other active admin/super_admin
-    if old_role in ("admin", "super_admin") and new_role not in ("admin", "super_admin"):
+    # SAFETY CHECK: If demoting an existing admin, verify there is at least one other active admin
+    if old_role == "admin" and new_role != "admin":
         active_admins_count = (
             db.query(func.count(User.user_id))
-            .filter(User.role.in_(["admin", "super_admin"]), User.is_active == True, User.user_id != user_id)
+            .filter(User.role == "admin", User.is_active == True, User.user_id != user_id)
             .scalar()
             or 0
         )
@@ -409,9 +380,7 @@ def update_user_status(
 ):
     """
     Suspend or reactivate a user account.
-    Guarded: 
-    - Only Super Admin can suspend a Super Admin.
-    - Blocks suspending the last active administrator or super administrator.
+    Guarded: Blocks suspending the last active administrator account.
     """
     target = db.query(User).filter(User.user_id == user_id).first()
     if not target:
@@ -431,32 +400,11 @@ def update_user_status(
             "user": target.to_dict(),
         }
 
-    # SAFETY CHECK: Only Super Admin can suspend/reactivate a Super Admin
-    if target.role == "super_admin" and admin_user.role != "super_admin":
-        raise HTTPException(
-            status_code=403,
-            detail="Administrative privilege restriction: Only a Super Administrator can suspend a Super Administrator account.",
-        )
-
-    # SAFETY CHECK: If suspending a super_admin, make sure there's another active super_admin
-    if not new_active and target.role == "super_admin":
-        other_super_admins = (
-            db.query(func.count(User.user_id))
-            .filter(User.role == "super_admin", User.is_active == True, User.user_id != user_id)
-            .scalar()
-            or 0
-        )
-        if other_super_admins < 1:
-            raise HTTPException(
-                status_code=400,
-                detail="Security lockout prevention: Cannot suspend the last remaining active Super Administrator account.",
-            )
-
-    # SAFETY CHECK: If suspending an admin/super_admin, make sure there's another active admin/super_admin
-    if not new_active and target.role in ("admin", "super_admin"):
+    # SAFETY CHECK: If suspending an admin, make sure there's another active admin
+    if not new_active and target.role == "admin":
         other_active_admins = (
             db.query(func.count(User.user_id))
-            .filter(User.role.in_(["admin", "super_admin"]), User.is_active == True, User.user_id != user_id)
+            .filter(User.role == "admin", User.is_active == True, User.user_id != user_id)
             .scalar()
             or 0
         )
@@ -583,6 +531,7 @@ def reload_disease_data(
     """
     try:
         from backend.database.seed_database import main as seed_main
+
         seed_main()
 
         # Refresh symptom matcher

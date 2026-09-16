@@ -217,10 +217,10 @@ def train_model(epochs_frozen=5, epochs_finetune=3, batch_size=32, lr=1e-3, fine
         loss = history_frozen.history["loss"]
         val_loss = history_frozen.history["val_loss"]
 
-    # Save class names list to JSON in the models and model folders for compatibility
+    # Save class names list to JSON in the models directory
     import json
     class_data = {"classes": class_names}
-    for folder in [MODELS_DIR, os.path.join(BASE_DIR, "model")]:
+    for folder in [MODELS_DIR]:
         os.makedirs(folder, exist_ok=True)
         with open(os.path.join(folder, "class_names.json"), "w") as f:
             json.dump(class_data, f, indent=2)

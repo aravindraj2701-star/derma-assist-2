@@ -26,7 +26,8 @@ function AppRoutes() {
 
   // Public unauthenticated page paths where full app navigation bar must never render
   const isPublicAuthPage = ['/', '/login', '/forgot-password', '/reset-password'].includes(location.pathname);
-  const showAppNav = isAuthenticated && !isPublicAuthPage;
+  const isAdminPage = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
+  const showAppNav = isAuthenticated && !isPublicAuthPage && !isAdminPage;
 
   return (
     <>

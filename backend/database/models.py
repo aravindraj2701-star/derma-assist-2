@@ -21,6 +21,20 @@ class User(Base):
     profile_picture = Column(Text, nullable=True)
     role = Column(String(50), default="patient", nullable=False)  # patient / doctor / admin
     is_active = Column(Boolean, default=True, nullable=False)
+    phone = Column(String(50), nullable=True)
+    address = Column(Text, nullable=True)
+    city = Column(String(100), nullable=True)
+    state = Column(String(100), nullable=True)
+    zip_code = Column(String(30), nullable=True)
+    date_of_birth = Column(String(50), nullable=True)
+    gender = Column(String(30), nullable=True)
+    bio = Column(Text, nullable=True)
+    specialization = Column(String(150), nullable=True)
+    hospital_affiliation = Column(String(255), nullable=True)
+    license_number = Column(String(100), nullable=True)
+    emergency_contact = Column(String(100), nullable=True)
+    emergency_phone = Column(String(50), nullable=True)
+    allergies = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     cases = relationship("CaseHistory", back_populates="user", lazy="dynamic")
@@ -34,6 +48,20 @@ class User(Base):
             "user_id": self.user_id,
             "name": self.name,
             "email": self.email,
+            "phone": self.phone or "",
+            "address": self.address or "",
+            "city": self.city or "",
+            "state": self.state or "",
+            "zip_code": self.zip_code or "",
+            "date_of_birth": self.date_of_birth or "",
+            "gender": self.gender or "",
+            "bio": self.bio or "",
+            "specialization": self.specialization or "",
+            "hospital_affiliation": self.hospital_affiliation or "",
+            "license_number": self.license_number or "",
+            "emergency_contact": self.emergency_contact or "",
+            "emergency_phone": self.emergency_phone or "",
+            "allergies": self.allergies or "",
             "role": self.role or "patient",
             "is_active": bool(self.is_active),
             "status": "active" if self.is_active else "suspended",

@@ -27,6 +27,28 @@ def init_database():
                     conn.execute(text("UPDATE users SET is_active = 1 WHERE is_active IS NULL"))
                     print("[DB] Added missing 'is_active' column to users table.")
 
+                # Profile & Clinical Fields
+                profile_fields = [
+                    ("phone", "VARCHAR(50)"),
+                    ("address", "TEXT"),
+                    ("city", "VARCHAR(100)"),
+                    ("state", "VARCHAR(100)"),
+                    ("zip_code", "VARCHAR(30)"),
+                    ("date_of_birth", "VARCHAR(50)"),
+                    ("gender", "VARCHAR(30)"),
+                    ("bio", "TEXT"),
+                    ("specialization", "VARCHAR(150)"),
+                    ("hospital_affiliation", "VARCHAR(255)"),
+                    ("license_number", "VARCHAR(100)"),
+                    ("emergency_contact", "VARCHAR(100)"),
+                    ("emergency_phone", "VARCHAR(50)"),
+                    ("allergies", "TEXT"),
+                ]
+                for col_name, col_type in profile_fields:
+                    if col_name not in user_cols:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+                        print(f"[DB] Added missing '{col_name}' column to users table.")
+
                 conn.commit()
 
         # Auto-seed diseases and symptoms if empty

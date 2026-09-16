@@ -66,7 +66,7 @@ copy .env.example .env
 
 # Seed the database
 cd ..
-python database/seed_database.py
+python -m backend.database.seed_database
 
 # Start backend
 cd backend

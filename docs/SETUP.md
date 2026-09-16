@@ -53,7 +53,7 @@ DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/derma_assist
 
 ```bash
 # From project root
-python database/seed_database.py
+python -m backend.database.seed_database
 ```
 
 This creates tables and imports disease/symptom data from CSVs.

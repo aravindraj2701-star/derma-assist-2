@@ -25,9 +25,9 @@ class Settings(BaseSettings):
     JWT_EXPIRY_HOURS: int = 24
 
     # --- Model Paths ---
-    MODEL_PATH: str = str(PROJECT_ROOT / "model" / "skin_model.h5")
-    CLASS_NAMES_PATH: str = str(PROJECT_ROOT / "model" / "class_names.json")
-    MODEL_CONFIG_PATH: str = str(PROJECT_ROOT / "model" / "model_config.json")
+    MODEL_PATH: str = str(PROJECT_ROOT / "models" / "skin_disease_model.keras")
+    CLASS_NAMES_PATH: str = str(PROJECT_ROOT / "models" / "class_names.json")
+    MODEL_CONFIG_PATH: str = str(PROJECT_ROOT / "models" / "model_config.json")
 
     # --- Prediction Settings ---
     IMAGE_WEIGHT: float = 0.70
@@ -78,6 +78,19 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# Normalize model paths to resolve against PROJECT_ROOT / models
+for _attr in ["MODEL_PATH", "CLASS_NAMES_PATH", "MODEL_CONFIG_PATH"]:
+    _raw = getattr(settings, _attr, "")
+    if _raw:
+        _p = Path(_raw)
+        if not (_p.is_absolute() and _p.exists()):
+            _cleaned = _raw.replace("../", "").replace("..\\", "").replace("model/", "models/").replace("model\\", "models\\")
+            _cand = (PROJECT_ROOT / _cleaned).resolve()
+            if _cand.exists():
+                setattr(settings, _attr, str(_cand))
+            elif (PROJECT_ROOT / "models" / _p.name).exists():
+                setattr(settings, _attr, str(PROJECT_ROOT / "models" / _p.name))
 
 # Ensure upload directory exists
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
