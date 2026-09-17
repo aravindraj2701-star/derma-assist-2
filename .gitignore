@@ -8,7 +8,8 @@ data/
 dataset/
 */data/
 */dataset/
-combined_skin_disease_dataset*.csv
+combined_skin_disease_dataset.csv
+!combined_skin_disease_dataset_v2.csv
 *.zip
 *.tar
 *.tar.gz

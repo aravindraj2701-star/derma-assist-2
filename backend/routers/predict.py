@@ -10,6 +10,9 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 import json
+import logging
+
+logger = logging.getLogger("derma_assist.predict")
 
 from backend.database.connection import get_db
 from backend.database.models import Disease, CaseHistory, PredictionDetail, User
@@ -123,8 +126,14 @@ async def predict(
             "risk_level": pred["risk_level"],
         })
 
-    # Retrieve matched reference example from visual embedding matcher
-    reference_example = scin_result.get("reference_example") or get_canonical_reference(top_disease_name)
+    # Retrieve matched reference example from visual embedding matcher or canonical cache
+    reference_example = scin_result.get("reference_example")
+    if not reference_example:
+        try:
+            reference_example = get_canonical_reference(top_disease_name)
+        except Exception as ref_err:
+            logger.warning(f"Canonical reference retrieval notice: {ref_err}")
+            reference_example = None
 
     # Disease database info if available
     disease_info = None

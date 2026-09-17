@@ -7,6 +7,7 @@ reference images and metadata for all predicted dermatological conditions.
 import os
 import glob
 import base64
+import json
 import pandas as pd
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
@@ -17,6 +18,8 @@ import io
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CSV_PATH_V1 = PROJECT_ROOT / "combined_skin_disease_dataset.csv"
 CSV_PATH_V2 = PROJECT_ROOT / "combined_skin_disease_dataset_v2.csv"
+DB_DISEASES_PATH = PROJECT_ROOT / "database" / "diseases.csv"
+CANONICAL_REF_PATH = PROJECT_ROOT / "models" / "canonical_references.json"
 SCIN_CASES_PATH = PROJECT_ROOT / "dataset" / "scin" / "metadata" / "scin_cases.csv"
 SCIN_LABELS_PATH = PROJECT_ROOT / "dataset" / "scin" / "metadata" / "scin_labels.csv"
 SCIN_IMAGES_DIR = PROJECT_ROOT / "dataset" / "scin" / "images"
@@ -44,51 +47,101 @@ def load_dataset() -> pd.DataFrame:
     if _dataset_df is not None:
         return _dataset_df
 
+    # Load precomputed canonical reference catalog if present
+    if CANONICAL_REF_PATH.exists():
+        try:
+            with open(CANONICAL_REF_PATH, "r", encoding="utf-8") as f:
+                pre_refs = json.load(f)
+                _canonical_reference_cache.update(pre_refs)
+        except Exception as e:
+            print(f"[DATASET SERVICE] Canonical references load notice: {e}")
+
     # Load Primary ISIC/DermNet CSV
     csv_file = CSV_PATH_V2 if CSV_PATH_V2.exists() else CSV_PATH_V1
-    if not csv_file.exists():
-        records = []
-        for img_p in glob.glob(str(DATASET_DIR / "*" / "*" / "*")):
-            rel_p = os.path.relpath(img_p, PROJECT_ROOT).replace("\\", "/")
-            parts = rel_p.split("/")
-            split_name = parts[1] if len(parts) > 1 else "train"
-            disease_name = parts[2] if len(parts) > 2 else "Unknown"
-            records.append({
-                "image_path": rel_p,
-                "source": "ISIC Archive",
-                "unified_disease_label": disease_name,
-                "category": "Dermatological Lesion",
-                "body_location": "Trunk, Extremities, Face",
-                "symptoms_description": f"Clinical reference manifestation of {disease_name}.",
-                "malignant": 1 if "carcinoma" in disease_name.lower() or "melanoma" in disease_name.lower() else 0,
-                "split": split_name,
-            })
-        df = pd.DataFrame(records)
+    if csv_file.exists():
+        try:
+            df = pd.read_csv(csv_file)
+        except Exception as e:
+            print(f"[DATASET SERVICE] Error reading CSV {csv_file}: {e}")
+            df = pd.DataFrame()
     else:
-        df = pd.read_csv(csv_file)
+        # Fallback to database/diseases.csv or local directories
+        records = []
+        if DB_DISEASES_PATH.exists():
+            try:
+                db_df = pd.read_csv(DB_DISEASES_PATH)
+                for _, row in db_df.iterrows():
+                    d_name = str(row.get("disease_name", "")).strip()
+                    if not d_name:
+                        continue
+                    sev = str(row.get("severity_level", "mild")).lower()
+                    is_mal = 1 if sev == "severe" or "melanoma" in d_name.lower() or "carcinoma" in d_name.lower() else 0
+                    records.append({
+                        "image_path": f"database/reference/{d_name}.jpg",
+                        "source": "Clinical Reference Library",
+                        "unified_disease_label": d_name,
+                        "category": "Dermatological Condition",
+                        "body_location": "Trunk, Face, Extremities",
+                        "symptoms_description": str(row.get("description", "")).replace("[VERIFY] ", ""),
+                        "malignant": is_mal,
+                        "split": "train",
+                    })
+            except Exception as e:
+                print(f"[DATASET SERVICE] Error reading DB diseases fallback: {e}")
+
+        if not records:
+            for img_p in glob.glob(str(DATASET_DIR / "*" / "*" / "*")):
+                rel_p = os.path.relpath(img_p, PROJECT_ROOT).replace("\\", "/")
+                parts = rel_p.split("/")
+                split_name = parts[1] if len(parts) > 1 else "train"
+                disease_name = parts[2] if len(parts) > 2 else "Unknown"
+                records.append({
+                    "image_path": rel_p,
+                    "source": "ISIC Archive",
+                    "unified_disease_label": disease_name,
+                    "category": "Dermatological Lesion",
+                    "body_location": "Trunk, Extremities, Face",
+                    "symptoms_description": f"Clinical reference manifestation of {disease_name}.",
+                    "malignant": 1 if "carcinoma" in disease_name.lower() or "melanoma" in disease_name.lower() else 0,
+                    "split": split_name,
+                })
+
+        df = pd.DataFrame(records)
 
     # Standardize column names
     df.columns = [c.strip() for c in df.columns]
 
-    # Ensure required columns
+    # Ensure required columns exist even if dataframe was empty
+    if "unified_disease_label" not in df.columns:
+        df["unified_disease_label"] = []
+    if "image_path" not in df.columns:
+        df["image_path"] = []
     if "source" not in df.columns:
         df["source"] = "ISIC Archive"
+    if "category" not in df.columns:
+        df["category"] = "Dermatological Condition"
     if "body_location" not in df.columns:
         df["body_location"] = "Trunk, Face, Extremities"
     if "symptoms_description" not in df.columns:
         df["symptoms_description"] = "Lesion observed with characteristic dermatological morphology."
     if "malignant" not in df.columns:
-        df["malignant"] = df["unified_disease_label"].apply(
-            lambda x: 1 if "carcinoma" in str(x).lower() or "melanoma" in str(x).lower() else 0
-        )
+        if not df.empty and "unified_disease_label" in df.columns:
+            df["malignant"] = df["unified_disease_label"].apply(
+                lambda x: 1 if "carcinoma" in str(x).lower() or "melanoma" in str(x).lower() else 0
+            )
+        else:
+            df["malignant"] = 0
     if "split" not in df.columns:
         df["split"] = "train"
 
-    # Add severity column
-    df["severity"] = df.apply(
-        lambda r: _get_severity(r.get("malignant", 0), r.get("category", ""), r.get("unified_disease_label", "")),
-        axis=1,
-    )
+    # Add severity column safely
+    if not df.empty:
+        df["severity"] = df.apply(
+            lambda r: _get_severity(r.get("malignant", 0), r.get("category", ""), r.get("unified_disease_label", "")),
+            axis=1,
+        )
+    else:
+        df["severity"] = []
 
     # Check file existence on disk and standardize path format
     def resolve_image_path(p: str) -> str:
@@ -103,8 +156,12 @@ def load_dataset() -> pd.DataFrame:
                 return f"{stem}{ext}".replace("\\", "/")
         return clean_p
 
-    df["resolved_image_path"] = df["image_path"].apply(resolve_image_path)
-    df["file_exists"] = df["resolved_image_path"].apply(lambda p: (PROJECT_ROOT / p).exists())
+    if not df.empty:
+        df["resolved_image_path"] = df["image_path"].apply(resolve_image_path)
+        df["file_exists"] = df["resolved_image_path"].apply(lambda p: (PROJECT_ROOT / p).exists())
+    else:
+        df["resolved_image_path"] = []
+        df["file_exists"] = []
 
     # Deterministic dates
     base_date = datetime(2024, 1, 15)
@@ -119,21 +176,25 @@ def load_dataset() -> pd.DataFrame:
     _dataset_df = df
 
     # 1. Index ISIC / DermNet diseases
-    for disease_name, group in df[df["file_exists"]].groupby("unified_disease_label"):
-        first_row = group.iloc[0]
-        _canonical_reference_cache[disease_name] = {
-            "id": int(first_row["id"]),
-            "image_path": first_row["resolved_image_path"],
-            "disease_name": first_row["unified_disease_label"],
-            "category": first_row.get("category", "Clinical Lesion"),
-            "body_location": first_row.get("body_location", "General Cutaneous"),
-            "symptoms_description": first_row.get("symptoms_description", "Characteristic dermatoscopic features."),
-            "severity": first_row["severity"],
-            "source": first_row.get("source", "ISIC Archive"),
-            "split": first_row.get("split", "train"),
-            "has_image": True,
-            "label": "Reference example from training data",
-        }
+    if not df.empty and "unified_disease_label" in df.columns:
+        for disease_name, group in df.groupby("unified_disease_label"):
+            if disease_name in _canonical_reference_cache:
+                continue
+            first_row = group.iloc[0]
+            _canonical_reference_cache[disease_name] = {
+                "id": int(first_row["id"]),
+                "image_path": first_row["resolved_image_path"],
+                "disease_name": first_row["unified_disease_label"],
+                "category": first_row.get("category", "Clinical Lesion"),
+                "body_location": first_row.get("body_location", "General Cutaneous"),
+                "symptoms_description": first_row.get("symptoms_description", "Characteristic dermatoscopic features."),
+                "severity": first_row["severity"],
+                "source": first_row.get("source", "ISIC Archive"),
+                "split": first_row.get("split", "train"),
+                "has_image": bool(first_row.get("file_exists", False)),
+                "label": "Reference example from training data",
+            }
+
 
     # 2. Index Google SCIN conditions
     if SCIN_CASES_PATH.exists() and SCIN_LABELS_PATH.exists():

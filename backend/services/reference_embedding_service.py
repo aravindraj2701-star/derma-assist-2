@@ -85,6 +85,13 @@ def build_or_load_reference_index():
         except Exception as e:
             print(f"[REFERENCE MATCHER] Cache load error ({e}), re-indexing dataset...")
 
+    # Guard against heavy initialization if dataset image folders do not exist on cloud VM
+    has_scin = SCIN_CASES_PATH.exists() and SCIN_LABELS_PATH.exists() and bool(list(glob.glob(str(SCIN_IMAGES_DIR / "*.png"))))
+    has_isic = bool(list(glob.glob(str(ISIC_DATASET_DIR / "*" / "*" / "*"))))
+    if not has_scin and not has_isic:
+        print("[REFERENCE MATCHER] No raw dataset images found; skipping heavy embedding extraction.")
+        return _reference_index, _reference_embeddings_matrix
+
     print("[REFERENCE MATCHER] Building fast reference image visual index...")
     extractor = get_feature_extractor()
 
@@ -219,70 +226,82 @@ def find_best_reference_match(
 
     records, matrix = build_or_load_reference_index()
     if len(records) == 0 or matrix is None or len(matrix) == 0:
-        return None
-
-    # 1. Extract Patient Image Embedding
-    patient_emb = extract_image_embedding(patient_image)
-
-    # 2. Filter Candidate Reference Records for Predicted Condition
-    target_clean = predicted_disease.lower().replace("dermatitis", "").replace("rash", "").strip()
-    candidate_indices = []
-
-    # Check for Ringworm / Tinea alias handling
-    aliases = [predicted_disease.lower(), target_clean]
-    if "tinea" in target_clean or "ringworm" in target_clean:
-        aliases.extend(["tinea", "ringworm", "tinea corporis", "tinea cruris", "tinea pedis"])
-    if "eczema" in target_clean or "atopic" in target_clean:
-        aliases.extend(["eczema", "atopic dermatitis", "dermatitis"])
-    if "psoriasis" in target_clean:
-        aliases.extend(["psoriasis", "plaque psoriasis"])
-    if "contact" in target_clean:
-        aliases.extend(["contact dermatitis", "allergic contact", "irritant contact"])
-    if "zoster" in target_clean or "shingles" in target_clean:
-        aliases.extend(["herpes zoster", "zoster", "shingles"])
-
-    for idx, rec in enumerate(records):
-        rec_lbl = rec["all_labels"].lower()
-        rec_dis = rec["disease_name"].lower()
-        if any(alias in rec_lbl or alias in rec_dis for alias in aliases):
-            candidate_indices.append(idx)
-
-    # Fallback: if no strict condition match, consider top similar across whole index
-    if len(candidate_indices) == 0:
-        candidate_indices = list(range(len(records)))
-
-    # 3. Compute Cosine Similarity between Patient and all Candidates
-    candidate_embs = matrix[candidate_indices]
-    sims = np.dot(candidate_embs, patient_emb)
-
-    best_cand_idx = int(np.argmax(sims))
-    best_record_idx = candidate_indices[best_cand_idx]
-    best_sim_score = float(sims[best_cand_idx])
-
-    best_record = dict(records[best_record_idx])
-
-    # Convert similarity score [-1, 1] into a clean clinical percentage [0, 100%]
-    sim_pct = round(float(np.clip((best_sim_score + 1.0) / 2.0 * 100.0, 0.0, 99.9)), 1)
-
-    # Encode matched image to base64
-    full_path = PROJECT_ROOT / best_record["image_path"]
-    b64_str = ""
-    if full_path.exists():
         try:
-            with Image.open(full_path) as img:
-                img = img.convert("RGB")
-                img.thumbnail((360, 360))
-                buf = io.BytesIO()
-                img.save(buf, format="JPEG", quality=88)
-                b64_str = base64.b64encode(buf.getvalue()).decode("utf-8")
-        except Exception as e:
-            print(f"[REFERENCE MATCHER] Base64 encode error: {e}")
+            from backend.services.dataset_service import get_canonical_reference
+            return get_canonical_reference(predicted_disease)
+        except Exception:
+            return None
 
-    best_record["image_base64"] = b64_str
-    best_record["similarity_score"] = round(best_sim_score, 4)
-    best_record["similarity_pct"] = sim_pct
-    best_record["has_image"] = bool(b64_str)
-    best_record["label"] = f"Matched reference example for {predicted_disease} ({sim_pct}% visual alignment)"
+    try:
+        # 1. Extract Patient Image Embedding
+        patient_emb = extract_image_embedding(patient_image)
 
-    print(f"[REFERENCE MATCHER] Matched {predicted_disease} -> {best_record['image_path']} (Similarity: {sim_pct}%, Cosine: {best_sim_score:.4f})")
-    return best_record
+        # 2. Filter Candidate Reference Records for Predicted Condition
+        target_clean = predicted_disease.lower().replace("dermatitis", "").replace("rash", "").strip()
+        candidate_indices = []
+
+        # Check for Ringworm / Tinea alias handling
+        aliases = [predicted_disease.lower(), target_clean]
+        if "tinea" in target_clean or "ringworm" in target_clean:
+            aliases.extend(["tinea", "ringworm", "tinea corporis", "tinea cruris", "tinea pedis"])
+        if "eczema" in target_clean or "atopic" in target_clean:
+            aliases.extend(["eczema", "atopic dermatitis", "dermatitis"])
+        if "psoriasis" in target_clean:
+            aliases.extend(["psoriasis", "plaque psoriasis"])
+        if "contact" in target_clean:
+            aliases.extend(["contact dermatitis", "allergic contact", "irritant contact"])
+        if "zoster" in target_clean or "shingles" in target_clean:
+            aliases.extend(["herpes zoster", "zoster", "shingles"])
+
+        for idx, rec in enumerate(records):
+            rec_lbl = rec["all_labels"].lower()
+            rec_dis = rec["disease_name"].lower()
+            if any(alias in rec_lbl or alias in rec_dis for alias in aliases):
+                candidate_indices.append(idx)
+
+        # Fallback: if no strict condition match, consider top similar across whole index
+        if len(candidate_indices) == 0:
+            candidate_indices = list(range(len(records)))
+
+        # 3. Compute Cosine Similarity between Patient and all Candidates
+        candidate_embs = matrix[candidate_indices]
+        sims = np.dot(candidate_embs, patient_emb)
+
+        best_cand_idx = int(np.argmax(sims))
+        best_record_idx = candidate_indices[best_cand_idx]
+        best_sim_score = float(sims[best_cand_idx])
+
+        best_record = dict(records[best_record_idx])
+
+        # Convert similarity score [-1, 1] into a clean clinical percentage [0, 100%]
+        sim_pct = round(float(np.clip((best_sim_score + 1.0) / 2.0 * 100.0, 0.0, 99.9)), 1)
+
+        # Encode matched image to base64
+        full_path = PROJECT_ROOT / best_record["image_path"]
+        b64_str = ""
+        if full_path.exists():
+            try:
+                with Image.open(full_path) as img:
+                    img = img.convert("RGB")
+                    img.thumbnail((360, 360))
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG", quality=88)
+                    b64_str = base64.b64encode(buf.getvalue()).decode("utf-8")
+            except Exception as e:
+                print(f"[REFERENCE MATCHER] Base64 encode error: {e}")
+
+        best_record["image_base64"] = b64_str
+        best_record["similarity_score"] = round(best_sim_score, 4)
+        best_record["similarity_pct"] = sim_pct
+        best_record["has_image"] = bool(b64_str)
+        best_record["label"] = f"Matched reference example for {predicted_disease} ({sim_pct}% visual alignment)"
+
+        print(f"[REFERENCE MATCHER] Matched {predicted_disease} -> {best_record['image_path']} (Similarity: {sim_pct}%, Cosine: {best_sim_score:.4f})")
+        return best_record
+    except Exception as e:
+        print(f"[REFERENCE MATCHER NOTICE] Visual similarity matching notice: {e}")
+        try:
+            from backend.services.dataset_service import get_canonical_reference
+            return get_canonical_reference(predicted_disease)
+        except Exception:
+            return None
