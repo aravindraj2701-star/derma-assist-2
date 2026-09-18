@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { historyAPI, datasetAPI } from '../api/api';
 import Disclaimer from '../components/Disclaimer';
 import { formatScore, formatScoreValue } from '../utils/formatters';
+import { formatImageSrc, getReferenceImageSrc, logImageError } from '../utils/imageUtils';
 import './CaseDetailPage.css';
 
 export default function CaseDetailPage() {
@@ -12,6 +13,10 @@ export default function CaseDetailPage() {
   const [error, setError] = useState('');
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [pdfError, setPdfError] = useState('');
+  const [patientImgLoaded, setPatientImgLoaded] = useState(false);
+  const [patientImgError, setPatientImgError] = useState(false);
+  const [refImgLoaded, setRefImgLoaded] = useState(false);
+  const [refImgError, setRefImgError] = useState(false);
 
   useEffect(() => {
     loadCase();
@@ -212,15 +217,31 @@ export default function CaseDetailPage() {
             <div style={{ padding: '0.75rem 1rem', background: 'rgba(10,14,26,0.6)', borderBottom: '1px solid var(--border-default)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary-300)', textTransform: 'uppercase' }}>
               👤 Patient Uploaded Lesion
             </div>
-            <div style={{ height: '260px', background: '#0d1322', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {caseData.image_ref ? (
-                <img
-                  src={`data:image/png;base64,${caseData.image_ref}`}
-                  alt="Patient lesion"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                />
+            <div style={{ position: 'relative', height: '260px', background: '#0d1322', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              {formatImageSrc(caseData.image_ref) && !patientImgError ? (
+                <>
+                  {!patientImgLoaded && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0d1322', gap: '0.5rem' }}>
+                      <div className="spinner" style={{ width: '30px', height: '30px' }}></div>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Loading patient scan...</span>
+                    </div>
+                  )}
+                  <img
+                    src={formatImageSrc(caseData.image_ref)}
+                    alt="Patient lesion"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: patientImgLoaded ? 1 : 0, transition: 'opacity 0.25s ease' }}
+                    onLoad={() => setPatientImgLoaded(true)}
+                    onError={(e) => {
+                      logImageError('Case Detail Patient Lesion', caseData.image_ref, e);
+                      setPatientImgError(true);
+                    }}
+                  />
+                </>
               ) : (
-                <p style={{ color: 'var(--text-muted)' }}>Image Not Available</p>
+                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.25rem' }}>📷</span>
+                  <p style={{ margin: 0, fontSize: '0.85rem' }}>Image Not Available</p>
+                </div>
               )}
             </div>
             <div style={{ padding: '0.75rem', fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -233,25 +254,36 @@ export default function CaseDetailPage() {
             <div style={{ padding: '0.75rem 1rem', background: 'rgba(10,14,26,0.6)', borderBottom: '1px solid var(--border-default)', fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-400)', textTransform: 'uppercase' }}>
               📚 Reference example from training data
             </div>
-            <div style={{ height: '260px', background: '#0d1322', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {refExample?.image_base64 ? (
-                <img
-                  src={`data:image/jpeg;base64,${refExample.image_base64}`}
-                  alt="Reference lesion"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                />
-              ) : refExample?.image_path ? (
-                <img
-                  src={datasetAPI.getImageUrl(refExample.image_path)}
-                  alt="Reference lesion"
-                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                />
+            <div style={{ position: 'relative', height: '260px', background: '#0d1322', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              {(getReferenceImageSrc(refExample) || formatImageSrc(refExample?.image_base64 || refExample?.image_url || refExample?.image_path)) && !refImgError ? (
+                <>
+                  {!refImgLoaded && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0d1322', gap: '0.5rem' }}>
+                      <div className="spinner" style={{ width: '30px', height: '30px' }}></div>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Loading reference...</span>
+                    </div>
+                  )}
+                  <img
+                    src={getReferenceImageSrc(refExample) || formatImageSrc(refExample?.image_base64 || refExample?.image_url || refExample?.image_path)}
+                    alt="Reference lesion"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: refImgLoaded ? 1 : 0, transition: 'opacity 0.25s ease' }}
+                    onLoad={() => setRefImgLoaded(true)}
+                    onError={(e) => {
+                      logImageError('Case Detail Reference Example', refExample, e);
+                      setRefImgError(true);
+                    }}
+                  />
+                </>
               ) : (
-                <p style={{ color: 'var(--text-muted)' }}>Canonical ISIC reference match</p>
+                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.25rem' }}>📚</span>
+                  <p style={{ margin: 0, fontSize: '0.85rem' }}>{refExample?.disease_name || disease}</p>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Canonical training reference</span>
+                </div>
               )}
             </div>
             <div style={{ padding: '0.75rem', fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              <strong>{refExample?.disease_name || disease}</strong> • {refExample?.source || 'ISIC Archive'}
+              <strong>{refExample?.disease_name || disease}</strong> • {refExample?.source || 'Training Archive'}
             </div>
           </div>
         </div>

@@ -547,7 +547,28 @@
   background-color: var(--teal-50);
 }
 
+.loading-step-item.completed {
+  color: var(--teal-900);
+  font-weight: 500;
+}
+
 .step-check {
   font-weight: 700;
   color: var(--teal-600);
+  width: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-step-item.completed .step-check {
+  color: #059669;
+}
+
+.loading-step-item.active:not(.completed) .step-check {
+  animation: stepSpin 0.9s linear infinite;
+}
+
+@keyframes stepSpin {
+  to { transform: rotate(360deg); }
 }

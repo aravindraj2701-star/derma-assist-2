@@ -64,6 +64,19 @@ async def lifespan(app: FastAPI):
     # Ensure upload directory exists
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
+    # Pre-warm AI Models and Visual Reference Embeddings
+    try:
+        from backend.services.symptom_first_pipeline import get_trained_model
+        from backend.services.reference_embedding_service import build_or_load_reference_index
+        from backend.services.dataset_service import init_canonical_references
+        print("  Pre-warming neural models and reference image embeddings...", flush=True)
+        init_canonical_references()
+        get_trained_model()
+        build_or_load_reference_index()
+        print("  AI models and reference index pre-warmed successfully!", flush=True)
+    except Exception as e:
+        print(f"[PREWARM NOTICE] Pre-warming notice: {e}", flush=True)
+
     print(f"  Environment: {settings.APP_ENV}", flush=True)
     print(f"  LLM Provider: {settings.LLM_PROVIDER}", flush=True)
     print(f"  Model Path: {settings.MODEL_PATH}", flush=True)
@@ -98,17 +111,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register routers
-app.include_router(auth.router)
-app.include_router(predict.router)
-app.include_router(history.router)
-app.include_router(diseases.router)
-app.include_router(health.router)
-app.include_router(admin.router)
-app.include_router(dataset.router)
-app.include_router(reminders.router)
-app.include_router(chat.router)
-app.include_router(training.router)
+# Register routers (both direct and /api prefixes for full deployment compatibility)
+all_routers = [
+    auth.router, predict.router, history.router, diseases.router,
+    health.router, admin.router, dataset.router, reminders.router,
+    chat.router, training.router
+]
+for r in all_routers:
+    app.include_router(r)
+    app.include_router(r, prefix="/api")
 
 # Root endpoint
 @app.get("/")

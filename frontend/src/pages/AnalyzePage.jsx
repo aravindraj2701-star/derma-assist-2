@@ -91,6 +91,7 @@ export default function AnalyzePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useState('');
+  const [activeStep, setActiveStep] = useState(1);
 
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
     if (rejectedFiles.length > 0) {
@@ -173,7 +174,24 @@ export default function AnalyzePage() {
 
     setLoading(true);
     setError('');
-    setProgress('Preprocessing image & encoding clinical features from text...');
+    setActiveStep(1);
+    setProgress('Preprocessing lesion image and clinical symptom priors...');
+
+    // Dynamic progression indicators for realistic clinical feedback
+    const t1 = setTimeout(() => {
+      setActiveStep(2);
+      setProgress('Running Google SCIN multimodal neural network...');
+    }, 450);
+
+    const t2 = setTimeout(() => {
+      setActiveStep(3);
+      setProgress('Correlating visual embeddings against verified reference cases...');
+    }, 1100);
+
+    const t3 = setTimeout(() => {
+      setActiveStep(4);
+      setProgress('Compiling differential diagnosis matrix and clinical comparison...');
+    }, 1800);
 
     try {
       const formData = new FormData();
@@ -189,8 +207,11 @@ export default function AnalyzePage() {
       formData.append('fitzpatrick_skin_type', fitzpatrickType);
       formData.append('patient_notes', patientNotes.trim());
 
-      setProgress('Running Google SCIN Multimodal Neural Network...');
       const response = await predictAPI.analyzeWithForm(formData);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      setActiveStep(4);
 
       navigate('/result', {
         state: {
@@ -209,6 +230,9 @@ export default function AnalyzePage() {
         }
       });
     } catch (err) {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
       console.error('Analysis failed:', err);
       setError(
         err.response?.data?.detail ||
@@ -508,17 +532,21 @@ export default function AnalyzePage() {
             <h3 className="loading-title">Analyzing Multimodal Inputs</h3>
             <p className="loading-subtitle">{progress}</p>
             <div className="loading-steps-list">
-              <div className="loading-step-item active">
-                <span className="step-check">✓</span> Image Feature Extraction (ResNet34 Backbone)
+              <div className={`loading-step-item ${activeStep >= 1 ? 'active' : ''} ${activeStep > 1 ? 'completed' : ''}`}>
+                <span className="step-check">{activeStep > 1 ? '✓' : activeStep === 1 ? '⟳' : '○'}</span>
+                Image Preprocessing & Feature Extraction
               </div>
-              <div className="loading-step-item active">
-                <span className="step-check">✓</span> Tabular Symptom Encoding (MLP Branch)
+              <div className={`loading-step-item ${activeStep >= 2 ? 'active' : ''} ${activeStep > 2 ? 'completed' : ''}`}>
+                <span className="step-check">{activeStep > 2 ? '✓' : activeStep === 2 ? '⟳' : '○'}</span>
+                SCIN Multimodal Neural Inference & Re-Ranking
               </div>
-              <div className="loading-step-item active">
-                <span className="step-check">⟳</span> Multimodal Cross-Attention Fusion
+              <div className={`loading-step-item ${activeStep >= 3 ? 'active' : ''} ${activeStep > 3 ? 'completed' : ''}`}>
+                <span className="step-check">{activeStep > 3 ? '✓' : activeStep === 3 ? '⟳' : '○'}</span>
+                Dataset Reference Visual Embedding Correlation
               </div>
-              <div className="loading-step-item">
-                <span className="step-check">○</span> Fitzpatrick Fairness Stratification
+              <div className={`loading-step-item ${activeStep >= 4 ? 'active' : ''}`}>
+                <span className="step-check">{activeStep >= 4 ? '⟳' : '○'}</span>
+                Differentiating Features & Clinical Comparison
               </div>
             </div>
           </div>

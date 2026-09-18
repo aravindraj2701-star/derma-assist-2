@@ -99,6 +99,7 @@
 }
 
 .comparison-img-frame {
+  position: relative;
   width: 100%;
   height: 220px;
   background-color: #0f172a;
@@ -113,6 +114,7 @@
   height: 100%;
   object-fit: contain;
   display: block;
+  transition: opacity 0.3s ease;
 }
 
 .comparison-no-img {
@@ -131,10 +133,69 @@
 }
 
 .comparison-no-img.ref-fallback {
-  background-color: #f1f5f9;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   width: 100%;
   height: 100%;
   color: var(--text-secondary);
+  border: 1px dashed #cbd5e1;
+}
+
+.comparison-fallback-icon {
+  font-size: 2.2rem;
+  margin-bottom: 0.25rem;
+}
+
+.comparison-error-box {
+  background-color: #fef2f2;
+  border: 1px dashed #fca5a5;
+  color: #991b1b;
+  width: 100%;
+  height: 100%;
+}
+
+.comparison-error-icon {
+  font-size: 2.2rem;
+  color: #dc2626;
+  margin-bottom: 0.25rem;
+}
+
+.comparison-skeleton {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(90deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite linear;
+  gap: 0.75rem;
+  z-index: 2;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-pulse {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--primary-400, #38bdf8);
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.skeleton-text {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
 }
 
 .fallback-title {

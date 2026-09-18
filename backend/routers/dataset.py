@@ -74,7 +74,11 @@ def get_dataset_image(
         full_path = found
 
     media_type = "image/jpeg" if full_path.suffix.lower() in [".jpg", ".jpeg"] else "image/png"
-    return FileResponse(str(full_path), media_type=media_type)
+    return FileResponse(
+        str(full_path),
+        media_type=media_type,
+        headers={"Cache-Control": "public, max-age=86400, immutable"},
+    )
 
 
 @router.get("/reference/{disease_name}")

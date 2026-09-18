@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { predictAPI } from '../api/api';
 import Disclaimer from '../components/Disclaimer';
 import { formatScore, formatScoreValue } from '../utils/formatters';
+import { formatImageSrc, getReferenceImageSrc, logImageError } from '../utils/imageUtils';
 import './ResultPage.css';
 
 export default function ResultPage() {
@@ -12,6 +13,10 @@ export default function ResultPage() {
   const submittedSymptoms = location.state?.submittedSymptoms || {};
 
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [patientImgLoaded, setPatientImgLoaded] = useState(false);
+  const [patientImgError, setPatientImgError] = useState(false);
+  const [refImgLoaded, setRefImgLoaded] = useState(false);
+  const [refImgError, setRefImgError] = useState(false);
 
   // If no result is present, redirect to analyze page
   if (!result) {
@@ -53,17 +58,11 @@ export default function ResultPage() {
 
   const refExample = result.reference_example;
 
-  // Format Patient Image Source
-  const patientImageSrc = result.original_image
-    ? (result.original_image.startsWith('data:') ? result.original_image : `data:image/jpeg;base64,${result.original_image}`)
-    : (result.image_ref
-      ? (result.image_ref.startsWith('data:') ? result.image_ref : `data:image/jpeg;base64,${result.image_ref}`)
-      : null);
+  // Format Patient Image Source using robust magic-byte and MIME resolver
+  const patientImageSrc = formatImageSrc(result.original_image || result.image_ref);
 
-  // Format Reference Image Source
-  const refImageSrc = refExample?.image_base64
-    ? (refExample.image_base64.startsWith('data:') ? refExample.image_base64 : `data:image/jpeg;base64,${refExample.image_base64}`)
-    : (refExample?.image_path ? `/api/dataset/image?path=${encodeURIComponent(refExample.image_path)}` : null);
+  // Format Reference Image Source using dataset / embedding resolver
+  const refImageSrc = getReferenceImageSrc(refExample) || formatImageSrc(refExample?.image_base64 || refExample?.image_url || refExample?.image_path);
 
   // Candidate Predictions List
   const candidatePredictions = result.all_predictions || (primary ? [primary, ...differentials] : []);
@@ -213,12 +212,32 @@ export default function ResultPage() {
           {/* Patient Image Box */}
           <div className="comparison-box">
             <div className="comparison-img-frame">
-              {patientImageSrc ? (
-                <img
-                  src={patientImageSrc}
-                  alt="Patient uploaded lesion"
-                  className="comparison-img"
-                />
+              {patientImageSrc && !patientImgError ? (
+                <>
+                  {!patientImgLoaded && (
+                    <div className="comparison-skeleton">
+                      <div className="skeleton-pulse"></div>
+                      <span className="skeleton-text">Loading presentation...</span>
+                    </div>
+                  )}
+                  <img
+                    src={patientImageSrc}
+                    alt="Patient uploaded lesion"
+                    className="comparison-img"
+                    style={{ opacity: patientImgLoaded ? 1 : 0 }}
+                    onLoad={() => setPatientImgLoaded(true)}
+                    onError={(e) => {
+                      logImageError('Patient Uploaded Lesion', patientImageSrc, e);
+                      setPatientImgError(true);
+                    }}
+                  />
+                </>
+              ) : patientImgError ? (
+                <div className="comparison-no-img comparison-error-box">
+                  <span className="comparison-error-icon">⚠️</span>
+                  <p className="fallback-title">Image rendering error</p>
+                  <p className="fallback-sub">Could not decode patient scan in this session</p>
+                </div>
               ) : (
                 <div className="comparison-no-img">
                   <span>📷</span>
@@ -235,17 +254,36 @@ export default function ResultPage() {
           {/* Matched Reference Image Box */}
           <div className="comparison-box">
             <div className="comparison-img-frame">
-              {refImageSrc ? (
-                <img
-                  src={refImageSrc}
-                  alt={`Matched training example for ${primary.condition}`}
-                  className="comparison-img"
-                />
+              {refImageSrc && !refImgError ? (
+                <>
+                  {!refImgLoaded && (
+                    <div className="comparison-skeleton">
+                      <div className="skeleton-pulse"></div>
+                      <span className="skeleton-text">Retrieving reference...</span>
+                    </div>
+                  )}
+                  <img
+                    src={refImageSrc}
+                    alt={`Matched training example for ${refExample?.disease_name || primary.condition}`}
+                    className="comparison-img"
+                    style={{ opacity: refImgLoaded ? 1 : 0 }}
+                    onLoad={() => setRefImgLoaded(true)}
+                    onError={(e) => {
+                      logImageError('Reference Dataset Example', refImageSrc, e);
+                      setRefImgError(true);
+                    }}
+                  />
+                </>
               ) : (
                 <div className="comparison-no-img ref-fallback">
-                  <span>ℹ️</span>
-                  <p className="fallback-title">No close reference match found</p>
-                  <p className="fallback-sub">No exact image sample in active local reference slice</p>
+                  <span className="comparison-fallback-icon">📚</span>
+                  <p className="fallback-title">{refExample?.disease_name || primary.condition}</p>
+                  <p className="fallback-sub">Canonical reference archive documentation</p>
+                  {refExample?.similarity_pct && (
+                    <span className="similarity-badge" style={{ marginTop: '0.4rem' }}>
+                      ⚡ {refExample.similarity_pct}% Visual Match
+                    </span>
+                  )}
                 </div>
               )}
             </div>

@@ -21,7 +21,7 @@ from backend.services.scin_predictor import predict_scin_multimodal
 from backend.services.symptom_first_pipeline import run_symptom_first_pipeline
 from backend.services.dataset_service import get_canonical_reference
 from backend.services.pdf_report_generator import generate_clinical_pdf
-from backend.utils.image_utils import validate_image, image_to_base64
+from backend.utils.image_utils import validate_image, image_to_base64, image_to_optimized_base64
 from backend.config import settings
 
 router = APIRouter(tags=["Prediction"])
@@ -141,8 +141,8 @@ async def predict(
     if disease_entry:
         disease_info = disease_entry.to_dict()
 
-    # 5. Save Case to Database
-    original_image_b64 = image_to_base64(img)
+    # 5. Save Case to Database (using optimized web-friendly image thumbnail)
+    original_image_b64 = image_to_optimized_base64(img)
     stored_symptoms = resolved_notes or f"Location: {resolved_location} | Duration: {resolved_duration} | Texture: {resolved_textures} | Symptoms: {resolved_symptoms}"
 
     case = CaseHistory(
