@@ -188,8 +188,8 @@ def predict_scin_multimodal(image: Image.Image, symptom_data: Dict[str, Any]) ->
     tab_vector = encode_structured_symptoms(symptom_data)
     tab_tensor = torch.from_numpy(tab_vector).unsqueeze(0).float().to(_device)
 
-    # 3. Model Inference
-    with torch.no_grad():
+    # 3. Model Inference (Zero-Leak Inference Mode)
+    with torch.inference_mode():
         fused_logits = model(images=img_tensor, tabular=tab_tensor, mode="multimodal")
         fused_probs = torch.sigmoid(fused_logits).cpu().numpy()[0]
 
@@ -199,12 +199,14 @@ def predict_scin_multimodal(image: Image.Image, symptom_data: Dict[str, Any]) ->
         tab_logits = model(tabular=tab_tensor, mode="tabular_only")
         tab_probs = torch.sigmoid(tab_logits).cpu().numpy()[0]
 
-    # 4. Rank Predictions & Calibrate Confidence
-    top_k = min(5, len(conditions))
-    with torch.no_grad():
+        # 4. Rank Predictions & Calibrate Confidence
+        top_k = min(5, len(conditions))
         top_scores, top_idx_tensor = torch.topk(fused_logits[0], k=top_k)
         top_indices = top_idx_tensor.cpu().numpy().tolist()
         top_logits = top_scores.cpu().numpy()
+
+    # Free intermediate tensors
+    del img_tensor, tab_tensor, fused_logits, img_logits, tab_logits, top_scores, top_idx_tensor
 
     # Softmax with temperature T=1.2 over top competitive candidates for relative differential distribution
     exp_logits = np.exp(top_logits / 1.2)

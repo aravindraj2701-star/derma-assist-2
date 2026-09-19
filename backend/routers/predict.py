@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
 import json
 import logging
+import gc
+import torch
 
 logger = logging.getLogger("derma_assist.predict")
 
@@ -242,7 +244,7 @@ async def predict(
         logger.warning(f"Failed to auto-schedule follow-up reminder for Case #{case.case_id}: {rem_err}")
 
     # 6. Response Payload
-    return {
+    response_payload = {
         "case_id": case.case_id,
         "predicted_disease": top_disease_name,
         "confidence": confidence_score,
@@ -270,6 +272,17 @@ async def predict(
         "is_low_confidence": primary["confidence_pct"] < 35.0,
         "disclaimer": scin_result["disclaimer"],
     }
+
+    # Zero-Leak Memory Cleanup: actively clear Python and PyTorch garbage
+    try:
+        del img, scin_result, final_predictions, original_image_b64
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc.collect()
+    except Exception:
+        pass
+
+    return response_payload
 
 
 @router.post("/predict/report-pdf")
