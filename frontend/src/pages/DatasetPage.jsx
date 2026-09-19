@@ -4,7 +4,55 @@ import { datasetAPI } from '../api/api';
 import Disclaimer from '../components/Disclaimer';
 import './DatasetPage.css';
 
+const CACHE_KEY_RECORDS = 'derma_dataset_records_cache_v1';
+const CACHE_KEY_FILTERS = 'derma_dataset_filters_cache_v1';
+
+const DEFAULT_FILTER_OPTIONS = {
+  diseases: [
+    'Acne / Rosacea',
+    'Actinic Keratosis',
+    'Basal Cell Carcinoma',
+    'Eczema / Atopic Dermatitis',
+    'Melanoma',
+    'Nevus (Mole)',
+    'Psoriasis',
+    'Seborrheic Keratosis',
+    'Squamous Cell Carcinoma',
+    'Tinea / Fungal Infections',
+  ],
+  categories: [
+    'Benign Skin Lesion',
+    'Inflammatory / Dermatitis',
+    'Melanocytic Neoplasm',
+    'Non-Melanoma Skin Cancer (Malignant)',
+    'Papulosquamous Disorder',
+    'Premalignant Keratinocytic Lesion',
+    'Superficial Fungal Infection',
+  ],
+  severities: ['Benign', 'Pre-cancerous', 'Malignant'],
+  body_locations: ['Face', 'Back', 'Trunk', 'Neck', 'Extremities', 'Scalp', 'Hands', 'Shoulders'],
+  splits: ['train', 'test', 'validation'],
+};
+
+const getCachedDataset = () => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY_RECORDS);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return null;
+};
+
+const getCachedFilters = () => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY_FILTERS);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return DEFAULT_FILTER_OPTIONS;
+};
+
 export default function DatasetPage() {
+  const initialCache = getCachedDataset();
+
   // Data mode: 'dataset' (Reference Training Archive) or 'history' (Predicted Cases Reports)
   const [dataMode, setDataMode] = useState('dataset');
 
@@ -24,26 +72,23 @@ export default function DatasetPage() {
   const [pageSize, setPageSize] = useState(12);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'table'
 
-  // Data & Loading
-  const [records, setRecords] = useState([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-  const [filterOptions, setFilterOptions] = useState({
-    diseases: [],
-    categories: [],
-    severities: ['Benign', 'Pre-cancerous', 'Malignant'],
-    body_locations: ['Face', 'Back', 'Trunk', 'Neck', 'Extremities', 'Scalp', 'Hands', 'Shoulders'],
-    splits: ['train', 'test', 'validation'],
-  });
-  const [loading, setLoading] = useState(true);
+  // Data & Loading — initialized permanently from local storage cache
+  const [records, setRecords] = useState(initialCache?.records || []);
+  const [totalCount, setTotalCount] = useState(initialCache?.total || 3818);
+  const [totalPages, setTotalPages] = useState(initialCache?.total_pages || 1);
+  const [filterOptions, setFilterOptions] = useState(getCachedFilters());
+  const [loading, setLoading] = useState(!initialCache);
   const [error, setError] = useState('');
 
   // Selected Record for Detail Modal
   const [selectedRecord, setSelectedRecord] = useState(null);
 
-  // Fetch Dataset Records
+  // Fetch Dataset Records with Stale-While-Revalidate Caching
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    // Only show full loading spinner if we don't have cached data to display
+    if (records.length === 0) {
+      setLoading(true);
+    }
     setError('');
     try {
       if (dataMode === 'dataset') {
@@ -61,11 +106,40 @@ export default function DatasetPage() {
         };
 
         const res = await datasetAPI.getRecords(params);
-        setRecords(res.data.records || []);
-        setTotalCount(res.data.total || 0);
-        setTotalPages(res.data.total_pages || 1);
+        const newRecords = res.data.records || [];
+        const newTotal = res.data.total || 0;
+        const newPages = res.data.total_pages || 1;
+
+        setRecords(newRecords);
+        setTotalCount(newTotal);
+        setTotalPages(newPages);
+
         if (res.data.filter_options) {
-          setFilterOptions(res.data.filter_options);
+          const mergedFilters = {
+            ...DEFAULT_FILTER_OPTIONS,
+            ...res.data.filter_options,
+            diseases: res.data.filter_options.diseases?.length
+              ? res.data.filter_options.diseases
+              : DEFAULT_FILTER_OPTIONS.diseases,
+          };
+          setFilterOptions(mergedFilters);
+          try {
+            localStorage.setItem(CACHE_KEY_FILTERS, JSON.stringify(mergedFilters));
+          } catch (e) {}
+        }
+
+        // Cache default page view permanently
+        if (page === 1 && !searchQuery && selectedCategory === 'all' && selectedDisease === 'all') {
+          try {
+            localStorage.setItem(
+              CACHE_KEY_RECORDS,
+              JSON.stringify({
+                records: newRecords,
+                total: newTotal,
+                total_pages: newPages,
+              })
+            );
+          } catch (e) {}
         }
       } else {
         // History reports mode
@@ -86,7 +160,10 @@ export default function DatasetPage() {
       }
     } catch (err) {
       console.error('Failed to load data:', err);
-      setError('Unable to load records. Please verify server connection.');
+      // If we already have cached records, do not show blocking error screen
+      if (records.length === 0) {
+        setError('Unable to reach server. Displaying cached records if available.');
+      }
     } finally {
       setLoading(false);
     }
@@ -103,6 +180,7 @@ export default function DatasetPage() {
     minConfidence,
     page,
     pageSize,
+    records.length,
   ]);
 
   useEffect(() => {
