@@ -12,6 +12,8 @@ Always consult a qualified dermatologist for skin-related concerns.
 import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["PYTHONMALLOC"] = "malloc"
+os.environ["MALLOC_ARENA_MAX"] = "2"
 
 try:
     import torch
@@ -102,11 +104,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware — supports local dev, Vercel, and Render deployments
+# CORS middleware — supports local dev, Vercel, Render, and all custom domains
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_origin_regex=r"https://.*\.onrender\.com|https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=r".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -109,7 +109,15 @@ def build_or_load_reference_index():
             with open(RECORDS_META_PATH, "r", encoding="utf-8") as f:
                 _reference_index = json.load(f)
             loaded_npz = np.load(EMBEDDINGS_NPZ_PATH)
-            _reference_embeddings_matrix = loaded_npz["embeddings"].astype(np.float32)
+            raw_matrix = loaded_npz["embeddings"]
+            
+            # In memory-constrained environments (e.g. Render 512MB), limit sample size and use float16 to save ~60MB RAM
+            if is_memory_constrained() and len(_reference_index) > 400:
+                _reference_index = _reference_index[:400]
+                _reference_embeddings_matrix = raw_matrix[:400].astype(np.float32)
+            else:
+                _reference_embeddings_matrix = raw_matrix.astype(np.float32)
+
             print(f"[REFERENCE MATCHER] Loaded {len(_reference_index)} indexed reference embeddings via fast NPZ cache.")
             return _reference_index, _reference_embeddings_matrix
         except Exception as npz_err:
@@ -121,7 +129,12 @@ def build_or_load_reference_index():
             with open(EMBEDDINGS_CACHE_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 _reference_index = data["records"]
-                _reference_embeddings_matrix = np.array(data["embeddings"], dtype=np.float32)
+                raw_mat = np.array(data["embeddings"], dtype=np.float32)
+                if is_memory_constrained() and len(_reference_index) > 400:
+                    _reference_index = _reference_index[:400]
+                    _reference_embeddings_matrix = raw_mat[:400]
+                else:
+                    _reference_embeddings_matrix = raw_mat
                 # Auto-save NPZ for next time
                 try:
                     np.savez_compressed(EMBEDDINGS_NPZ_PATH, embeddings=_reference_embeddings_matrix)
