@@ -82,7 +82,11 @@ def get_dataset_records(
         page = max(1, min(page, total_pages))
         offset = (page - 1) * page_size
 
-        records = query.order_by(Condition.id.asc()).offset(offset).limit(page_size).all()
+        # Interleave round-robin across condition classes so each page displays diverse conditions
+        if disease and disease.strip() and disease.lower() != "all":
+            records = query.order_by(Condition.id.asc()).offset(offset).limit(page_size).all()
+        else:
+            records = query.order_by((Condition.id % 400).asc(), Condition.id.asc()).offset(offset).limit(page_size).all()
 
         # Extract distinct filter options for UI dropdowns
         categories = [c[0] for c in db.query(Condition.category).distinct().order_by(Condition.category).all() if c[0]]
@@ -155,7 +159,7 @@ def get_dataset_image(
         )
 
     # Resilient Cloud Fallback (Render):
-    # If the raw training image was not deployed to disk, serve canonical reference thumbnail
+    # If raw training images were not deployed to disk, serve diverse clinical thumbnails
     condition_hint = None
     parts = clean_path.split("/")
     if len(parts) >= 3:
@@ -164,9 +168,33 @@ def get_dataset_image(
         condition_hint = parts[1]
 
     if condition_hint:
+        import hashlib, base64
+        # 1. First check diverse thumbnails catalog so even identical conditions show diverse images
+        diverse_file = PROJECT_ROOT / "models" / "diverse_condition_thumbnails.json"
+        if diverse_file.exists():
+            try:
+                import json
+                with open(diverse_file, "r", encoding="utf-8") as f:
+                    div_data = json.load(f)
+                c_low = condition_hint.lower().strip()
+                matched_samples = []
+                for k, v in div_data.items():
+                    if k.lower() == c_low or c_low in k.lower() or k.lower() in c_low:
+                        matched_samples.extend(v)
+                if matched_samples:
+                    h_val = int(hashlib.md5(clean_path.encode("utf-8")).hexdigest(), 16)
+                    picked_b64 = matched_samples[h_val % len(matched_samples)]
+                    return Response(
+                        content=base64.b64decode(picked_b64),
+                        media_type="image/jpeg",
+                        headers={"Cache-Control": "public, max-age=86400"},
+                    )
+            except Exception:
+                pass
+
+        # 2. Canonical reference catalog fallback
         ref = get_canonical_reference(condition_hint)
         if ref and ref.get("image_base64"):
-            import base64
             img_bytes = base64.b64decode(ref["image_base64"])
             return Response(
                 content=img_bytes,

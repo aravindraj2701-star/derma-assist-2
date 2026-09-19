@@ -43,6 +43,9 @@ def validate_image(file_bytes: bytes, filename: str, max_size_bytes: int) -> Ima
         # Re-open after verify (verify() closes the file)
         img = Image.open(io.BytesIO(file_bytes))
         img = img.convert("RGB")
+        # Memory safety: restrict oversized dimensions to max 800px to prevent memory spikes
+        if max(img.size) > 800:
+            img.thumbnail((800, 800), Image.Resampling.LANCZOS)
         return img
     except Exception:
         raise HTTPException(

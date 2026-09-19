@@ -588,16 +588,24 @@ def run_symptom_first_pipeline(
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
     ])
-    img_tensor = val_tf(image.convert("RGB")).unsqueeze(0).to(_device)
+    proc_img = image.copy()
+    if max(proc_img.size) > 384:
+        proc_img.thumbnail((384, 384), Image.Resampling.LANCZOS)
+    img_tensor = val_tf(proc_img.convert("RGB")).unsqueeze(0).to(_device)
     tab_vector = encode_structured_symptoms_vector(symptom_data)
     tab_tensor = torch.from_numpy(tab_vector).unsqueeze(0).float().to(_device)
 
-    with torch.no_grad():
+    with torch.inference_mode():
         fused_logits = model(images=img_tensor, tabular=tab_tensor, mode="multimodal")
         fused_probs = torch.sigmoid(fused_logits).cpu().numpy()[0]
 
         img_logits = model(images=img_tensor, mode="image_only")
         raw_img_probs = torch.sigmoid(img_logits).cpu().numpy()[0]
+
+    # Free tensor allocations immediately
+    del img_tensor, tab_tensor, fused_logits, img_logits, proc_img
+    import gc
+    gc.collect()
 
     # Convert vision probabilities to percentages [0, 100%]
     all_image_scores = {}

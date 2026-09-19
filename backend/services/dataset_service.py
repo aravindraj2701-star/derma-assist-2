@@ -385,6 +385,18 @@ def query_dataset(
     if date_to and date_to.strip():
         filtered = filtered[filtered["date_added"] <= date_to.strip()]
 
+    # If no disease filter is active, round-robin interleave conditions so diverse conditions appear on every page
+    if not (disease and disease.strip() and disease.lower() != "all") and "unified_disease_label" in filtered.columns and len(filtered) > 0:
+        groups = [group for _, group in filtered.groupby("unified_disease_label", sort=False)]
+        interleaved = []
+        max_len = max((len(g) for g in groups), default=0)
+        for i in range(max_len):
+            for g in groups:
+                if i < len(g):
+                    interleaved.append(g.iloc[i])
+        if interleaved:
+            filtered = pd.DataFrame(interleaved).reset_index(drop=True)
+
     total = len(filtered)
     total_pages = max(1, (total + page_size - 1) // page_size)
     page = max(1, min(page, total_pages))
