@@ -97,7 +97,19 @@ export const historyAPI = {
 // --- Dataset / Show Data Explorer ---
 export const datasetAPI = {
   getRecords: (params = {}) => api.get('/dataset', { params }),
-  getImageUrl: (imagePath) => `${API_BASE}/dataset/image?path=${encodeURIComponent(imagePath)}`,
+  getById: (id) => api.get(`/dataset/${id}`),
+  getImageUrl: (imagePath) => {
+    if (!imagePath) return '';
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://') || imagePath.startsWith('data:')) {
+      return imagePath;
+    }
+    // If it already begins with /dataset/image, prepend API_BASE
+    if (imagePath.startsWith('/dataset/image')) {
+      return `${API_BASE}${imagePath}`;
+    }
+    const clean = imagePath.replace(/^\/+/, '');
+    return `${API_BASE}/dataset/image?path=${encodeURIComponent(clean)}`;
+  },
   getHistoryExplorer: (params = {}) => api.get('/dataset/history-explorer', { params }),
   getReference: (diseaseName) => api.get(`/dataset/reference/${encodeURIComponent(diseaseName)}`),
 };

@@ -10,8 +10,9 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from backend.database.connection import get_db
-from backend.database.models import CaseHistory, PredictionDetail, User
-from backend.services.auth_service import get_current_user
+from sqlalchemy import or_
+from backend.database.models import CaseHistory, PredictionDetail, User, Condition, ConditionImage
+from backend.services.auth_service import get_current_user, get_optional_current_user
 from backend.services.dataset_service import (
     query_dataset, get_canonical_reference, load_dataset, PROJECT_ROOT
 )
@@ -31,9 +32,80 @@ def get_dataset_records(
     split: Optional[str] = Query(None, description="Split: train, test, validation"),
     page: int = Query(1, ge=1),
     page_size: int = Query(24, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
-    """Retrieve filtered and paginated records from the training/reference skin disease dataset."""
+    """
+    Retrieve filtered and paginated records from the PostgreSQL conditions table,
+    with automatic fallback to CSV index if database has not yet been seeded.
+    """
+    # Check if database has seeded conditions
+    db_count = db.query(Condition).count()
+    if db_count > 0:
+        query = db.query(Condition)
+
+        if search and search.strip():
+            term = f"%{search.strip().lower()}%"
+            query = query.filter(
+                or_(
+                    Condition.condition_name.ilike(term),
+                    Condition.category.ilike(term),
+                    Condition.description.ilike(term),
+                    Condition.symptoms.ilike(term),
+                    Condition.body_locations.ilike(term),
+                )
+            )
+
+        if category and category.strip() and category.lower() != "all":
+            query = query.filter(Condition.category.ilike(category.strip()))
+
+        if disease and disease.strip() and disease.lower() != "all":
+            query = query.filter(Condition.condition_name.ilike(disease.strip()))
+
+        if severity and severity.strip() and severity.lower() != "all":
+            query = query.filter(Condition.severity.ilike(severity.strip()))
+
+        if body_location and body_location.strip() and body_location.lower() != "all":
+            query = query.filter(Condition.body_locations.ilike(f"%{body_location.strip()}%"))
+
+        if split and split.strip() and split.lower() != "all":
+            query = query.filter(Condition.split.ilike(split.strip()))
+
+        if date_from and date_from.strip():
+            query = query.filter(Condition.date_added >= date_from.strip())
+
+        if date_to and date_to.strip():
+            query = query.filter(Condition.date_added <= date_to.strip())
+
+        total = query.count()
+        total_pages = max(1, (total + page_size - 1) // page_size)
+        page = max(1, min(page, total_pages))
+        offset = (page - 1) * page_size
+
+        records = query.order_by(Condition.id.asc()).offset(offset).limit(page_size).all()
+
+        # Extract distinct filter options for UI dropdowns
+        categories = [c[0] for c in db.query(Condition.category).distinct().order_by(Condition.category).all() if c[0]]
+        diseases = [d[0] for d in db.query(Condition.condition_name).distinct().order_by(Condition.condition_name).all() if d[0]]
+
+        return {
+            "records": [r.to_dict() for r in records],
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "filter_options": {
+                "diseases": diseases,
+                "categories": categories,
+                "severities": ["Benign", "Pre-cancerous", "Malignant"],
+                "body_locations": [
+                    "Face", "Back", "Trunk", "Neck", "Extremities", "Scalp", "Hands", "Shoulders"
+                ],
+                "splits": ["train", "test", "validation"],
+            },
+        }
+
+    # Fallback to in-memory/CSV reader if DB is completely unseeded
     results = query_dataset(
         search=search,
         category=category,
@@ -53,15 +125,16 @@ def get_dataset_records(
 def get_dataset_image(
     path: str = Query(..., description="Relative path of the image in dataset"),
 ):
-    """Stream dataset image securely from disk."""
-    # Prevent directory traversal
+    """
+    Stream dataset image from disk, with automatic canonical fallback if missing on disk (e.g. Render).
+    """
     clean_path = path.replace("\\", "/").lstrip("/")
     if ".." in clean_path:
         raise HTTPException(status_code=400, detail="Invalid image path")
 
     full_path = PROJECT_ROOT / clean_path
     if not full_path.exists():
-        # Try alternate extension or check in dataset folder
+        # Try alternate extensions
         stem = clean_path.rsplit(".", 1)[0]
         found = None
         for ext in [".jpg", ".JPG", ".jpeg", ".JPEG", ".png", ".PNG"]:
@@ -69,16 +142,70 @@ def get_dataset_image(
             if alt.exists():
                 found = alt
                 break
-        if not found:
-            raise HTTPException(status_code=404, detail="Image not found on disk")
-        full_path = found
+        if found:
+            full_path = found
 
-    media_type = "image/jpeg" if full_path.suffix.lower() in [".jpg", ".jpeg"] else "image/png"
-    return FileResponse(
-        str(full_path),
-        media_type=media_type,
-        headers={"Cache-Control": "public, max-age=86400, immutable"},
+    # If file exists on disk, stream it
+    if full_path.exists():
+        media_type = "image/jpeg" if full_path.suffix.lower() in [".jpg", ".jpeg"] else "image/png"
+        return FileResponse(
+            str(full_path),
+            media_type=media_type,
+            headers={"Cache-Control": "public, max-age=86400, immutable"},
+        )
+
+    # Resilient Cloud Fallback (Render):
+    # If the raw training image was not deployed to disk, serve canonical reference thumbnail
+    condition_hint = None
+    parts = clean_path.split("/")
+    if len(parts) >= 3:
+        condition_hint = parts[2]  # e.g. "Squamous Cell Carcinoma"
+    elif len(parts) >= 2:
+        condition_hint = parts[1]
+
+    if condition_hint:
+        ref = get_canonical_reference(condition_hint)
+        if ref and ref.get("image_base64"):
+            import base64
+            img_bytes = base64.b64decode(ref["image_base64"])
+            return Response(
+                content=img_bytes,
+                media_type="image/jpeg",
+                headers={"Cache-Control": "public, max-age=86400"},
+            )
+
+    # Fallback SVG badge if no image available
+    title = condition_hint or "Dermatological Lesion"
+    svg_content = f"""<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="100%" stop-color="#1e293b"/>
+        </linearGradient>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#g)"/>
+      <circle cx="200" cy="130" r="50" fill="#334155" stroke="#14b8a6" stroke-width="2"/>
+      <text x="200" y="142" font-size="36" text-anchor="middle" fill="#14b8a6">🩺</text>
+      <text x="200" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" text-anchor="middle" fill="#e2e8f0">{title}</text>
+      <text x="200" y="242" font-family="system-ui, -apple-system, sans-serif" font-size="11" text-anchor="middle" fill="#94a3b8">Clinical Dataset Reference</text>
+    </svg>"""
+    return Response(
+        content=svg_content,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=86400"},
     )
+
+
+@router.get("/{condition_id}")
+def get_condition_detail(
+    condition_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get full details of a specific dataset condition by ID, including related images."""
+    cond = db.query(Condition).filter(Condition.id == condition_id).first()
+    if not cond:
+        raise HTTPException(status_code=404, detail=f"Condition with ID {condition_id} not found")
+    return cond.to_dict()
 
 
 @router.get("/reference/{disease_name}")

@@ -233,11 +233,48 @@ export default function AnalyzePage() {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
-      console.error('Analysis failed:', err);
-      setError(
-        err.response?.data?.detail ||
-        'Analysis failed. Please check network connection and try again.'
-      );
+
+      const statusCode = err.response?.status;
+      const responseData = err.response?.data;
+      const errorMessage = err.message;
+      const errorCode = err.code;
+
+      console.error('[Clinical Analysis Error Details]:', {
+        status: statusCode,
+        statusText: err.response?.statusText,
+        responseBody: responseData,
+        errorMessage: errorMessage,
+        errorCode: errorCode,
+        requestUrl: err.config?.url,
+        requestBaseURL: err.config?.baseURL,
+      });
+
+      // Construct a specific, actionable UI error message based on real response
+      let displayError = '';
+      if (statusCode === 401) {
+        displayError = 'Your session has expired or authorization is missing. Please log in again to analyze images.';
+      } else if (statusCode === 403) {
+        displayError = responseData?.detail || responseData?.message || 'Access denied: account suspended or permissions restricted.';
+      } else if (statusCode === 413) {
+        displayError = 'Uploaded image file exceeds the 10MB size limit. Please upload a smaller image.';
+      } else if (statusCode === 422) {
+        const detailMsg = Array.isArray(responseData?.detail)
+          ? responseData.detail.map((d) => `${d.loc?.slice(-1)[0] || 'field'}: ${d.msg}`).join(', ')
+          : responseData?.detail || 'Input validation failed.';
+        displayError = `Validation error (422): ${detailMsg}`;
+      } else if (statusCode === 500) {
+        displayError = `Server processing error (500): ${responseData?.message || responseData?.detail || 'Neural inference model encountered an unexpected state. Please retry.'}`;
+      } else if (statusCode === 502 || statusCode === 503 || statusCode === 504) {
+        displayError = `Backend server starting or busy (${statusCode}). Render free instances take ~50s to wake up on cold start. Please wait a moment and retry.`;
+      } else if (errorCode === 'ECONNABORTED' || errorMessage?.toLowerCase().includes('timeout')) {
+        displayError = 'Analysis request timed out. Neural inference or cold start took longer than expected. Please try again.';
+      } else if (err.isAxiosError && !err.response) {
+        displayError = `Network connection error (${errorCode || 'ERR_NETWORK'}): Cannot reach backend at ${err.config?.baseURL || '/api'}. Verify server is running, CORS origins match your domain, and HTTPS/HTTP protocols align.`;
+      } else {
+        displayError = responseData?.detail || responseData?.message || errorMessage || 'Analysis failed. Please check network connection and try again.';
+      }
+
+      setError(displayError);
     } finally {
       setLoading(false);
       setProgress('');

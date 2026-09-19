@@ -135,6 +135,14 @@ export default function DatasetPage() {
     return 'badge-severity-benign';
   };
 
+  const resolveItemImageUrl = (item, isHistory) => {
+    if (!item) return '';
+    if (isHistory) {
+      return item.image_ref ? `data:image/png;base64,${item.image_ref}` : '';
+    }
+    return datasetAPI.getImageUrl(item.image_url || item.image_path);
+  };
+
   return (
     <div className="dataset-page page container">
       {/* Header */}
@@ -388,9 +396,7 @@ export default function DatasetPage() {
             const isHistory = dataMode === 'history';
             const diseaseName = isHistory ? item.predicted_disease : item.unified_disease_label;
             const severity = item.severity || 'Benign';
-            const imageUrl = isHistory
-              ? (item.image_ref ? `data:image/png;base64,${item.image_ref}` : '')
-              : datasetAPI.getImageUrl(item.image_path);
+            const imageUrl = resolveItemImageUrl(item, isHistory);
 
             return (
               <div
@@ -478,9 +484,7 @@ export default function DatasetPage() {
                   const isHistory = dataMode === 'history';
                   const diseaseName = isHistory ? item.predicted_disease : item.unified_disease_label;
                   const severity = item.severity || 'Benign';
-                  const imageUrl = isHistory
-                    ? (item.image_ref ? `data:image/png;base64,${item.image_ref}` : '')
-                    : datasetAPI.getImageUrl(item.image_path);
+                  const imageUrl = resolveItemImageUrl(item, isHistory);
 
                   return (
                     <tr
@@ -597,11 +601,7 @@ export default function DatasetPage() {
             <div className="modal-body-grid">
               <div className="modal-image-col">
                 <img
-                  src={
-                    selectedRecord.isHistory
-                      ? (selectedRecord.image_ref ? `data:image/png;base64,${selectedRecord.image_ref}` : '')
-                      : datasetAPI.getImageUrl(selectedRecord.image_path)
-                  }
+                  src={resolveItemImageUrl(selectedRecord, selectedRecord.isHistory)}
                   alt={selectedRecord.unified_disease_label || selectedRecord.predicted_disease}
                   className="modal-full-image"
                 />

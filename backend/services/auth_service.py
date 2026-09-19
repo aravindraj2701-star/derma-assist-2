@@ -103,6 +103,30 @@ def get_current_user(
     return user
 
 
+def get_optional_current_user(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Dependency that returns the authenticated user if valid token provided, or None if unauthenticated."""
+    if not authorization:
+        return None
+
+    try:
+        token = authorization
+        if authorization.startswith("Bearer "):
+            token = authorization[7:]
+
+        payload = decode_jwt(token)
+        user_id = int(payload.get("sub", 0))
+
+        user = db.query(User).filter(User.user_id == user_id).first()
+        if user and user.is_active:
+            return user
+    except Exception:
+        pass
+    return None
+
+
 def require_admin(
     user: User = Depends(get_current_user),
 ) -> User:

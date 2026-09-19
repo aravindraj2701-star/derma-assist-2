@@ -410,4 +410,84 @@ class AdminAuditLog(Base):
         }
 
 
+class Condition(Base):
+    """Represents a dermatological condition record in the dataset library."""
+    __tablename__ = "conditions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    condition_name = Column(String(255), nullable=False, index=True)
+    category = Column(String(100), nullable=True, index=True)
+    body_locations = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
+    symptoms = Column(Text, nullable=True)
+    image_path = Column(Text, nullable=True)
+    image_url = Column(Text, nullable=True)
+    source = Column(String(100), nullable=True)
+    severity = Column(String(50), nullable=True)
+    malignant = Column(Integer, default=0)
+    split = Column(String(50), default="train")
+    date_added = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    images = relationship("ConditionImage", back_populates="condition", cascade="all, delete-orphan", lazy="selectin")
+
+    def __repr__(self):
+        return f"<Condition {self.id}: {self.condition_name} ({self.category})>"
+
+    def to_dict(self):
+        # Resolve working image URL: prefer explicit image_url, then fallback to relative image_path
+        resolved_url = self.image_url or (f"/dataset/image?path={self.image_path}" if self.image_path else "")
+        return {
+            "id": self.id,
+            "condition_name": self.condition_name,
+            "unified_disease_label": self.condition_name,  # compatibility alias for frontend
+            "category": self.category or "Dermatological Condition",
+            "body_location": self.body_locations or "Cutaneous Site",
+            "body_locations": self.body_locations or "Cutaneous Site",
+            "description": self.description or "",
+            "symptoms": self.symptoms or "",
+            "symptoms_description": self.symptoms or self.description or "",
+            "image_path": self.image_path or "",
+            "image_url": resolved_url,
+            "source": self.source or "Clinical Archive",
+            "severity": self.severity or ("Malignant" if self.malignant == 1 else "Benign"),
+            "malignant": int(self.malignant or 0),
+            "split": self.split or "train",
+            "date_added": self.date_added or (self.created_at.strftime("%Y-%m-%d") if self.created_at else "2024-2026"),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "images": [img.to_dict() for img in self.images] if self.images else [],
+        }
+
+
+class ConditionImage(Base):
+    """Related image entity for conditions that have multiple clinical/dermoscopic photos."""
+    __tablename__ = "condition_images"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    condition_id = Column(Integer, ForeignKey("conditions.id"), nullable=False, index=True)
+    image_path = Column(Text, nullable=True)
+    image_url = Column(Text, nullable=True)
+    is_primary = Column(Boolean, default=True)
+    caption = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    condition = relationship("Condition", back_populates="images")
+
+    def __repr__(self):
+        return f"<ConditionImage {self.id} -> condition={self.condition_id}>"
+
+    def to_dict(self):
+        resolved_url = self.image_url or (f"/dataset/image?path={self.image_path}" if self.image_path else "")
+        return {
+            "id": self.id,
+            "condition_id": self.condition_id,
+            "image_path": self.image_path or "",
+            "image_url": resolved_url,
+            "is_primary": bool(self.is_primary),
+            "caption": self.caption or "",
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+
 

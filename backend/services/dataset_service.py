@@ -410,10 +410,27 @@ def query_dataset(
             "file_exists": bool(r.get("file_exists", False)),
         })
 
+    # Distinct filter options for frontend dropdowns
+    distinct_diseases = sorted(list(set(
+        [str(d).strip() for d in df["unified_disease_label"].dropna().unique() if str(d).strip()] +
+        list(_canonical_reference_cache.keys())
+    )))
+    distinct_categories = sorted([str(c).strip() for c in df["category"].dropna().unique() if str(c).strip()])
+    distinct_locations = sorted([str(loc).strip() for loc in df["body_location"].dropna().unique() if str(loc).strip()])
+
     return {
         "records": formatted_records,
         "total": total,
         "page": page,
         "page_size": page_size,
         "total_pages": total_pages,
+        "filter_options": {
+            "diseases": distinct_diseases,
+            "categories": distinct_categories,
+            "severities": ["Benign", "Pre-cancerous", "Malignant"],
+            "body_locations": distinct_locations if distinct_locations else [
+                "Face", "Back", "Trunk", "Neck", "Extremities", "Scalp", "Hands", "Shoulders"
+            ],
+            "splits": ["train", "test", "validation"],
+        },
     }

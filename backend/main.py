@@ -20,7 +20,8 @@ except Exception:
     pass
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -101,15 +102,46 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware
+# CORS middleware — supports local dev, Vercel, and Render deployments
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
-    allow_origin_regex=r"https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=r"https://.*\.onrender\.com|https://.*\.vercel\.app|http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc: HTTPException):
+    """Normalize HTTP exceptions to clean JSON with status and message."""
+    detail_msg = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "status": "error",
+            "status_code": exc.status_code,
+            "message": detail_msg,
+            "detail": detail_msg,
+        },
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request, exc: Exception):
+    """Catch-all for internal server errors returning clear JSON."""
+    error_msg = str(exc) or "Internal server error occurred during processing."
+    return JSONResponse(
+        status_code=500,
+        content={
+            "status": "error",
+            "status_code": 500,
+            "message": error_msg,
+            "detail": error_msg,
+        },
+    )
+
 
 # Register routers (both direct and /api prefixes for full deployment compatibility)
 all_routers = [

@@ -1,6 +1,9 @@
 from sqlalchemy import inspect, text
 from backend.database.connection import engine, Base
-from backend.database.models import User, Disease, DiseaseSymptom, CaseHistory, PredictionDetail  # noqa
+from backend.database.models import (  # noqa
+    User, Disease, DiseaseSymptom, CaseHistory, PredictionDetail,
+    Condition, ConditionImage
+)
 
 
 def init_database():

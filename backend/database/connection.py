@@ -14,7 +14,7 @@ Base = declarative_base()
 
 
 def _build_engine():
-    raw_url = (settings.DATABASE_URL or "").strip()
+    raw_url = (settings.DATABASE_URL or os.getenv("DATABASE_URL") or "").strip()
 
     # Handle empty or default
     if not raw_url:
@@ -30,7 +30,7 @@ def _build_engine():
         if raw_url.startswith("sqlite:///./") or raw_url == "sqlite:///derma_assist.db":
             sqlite_path = PROJECT_ROOT / "derma_assist.db"
             raw_url = f"sqlite:///{sqlite_path.as_posix()}"
-        print(f"[DB] Connected to SQLite database: {raw_url}")
+        print(f"[DB] Initializing SQLite database engine: {raw_url}")
         return create_engine(
             raw_url,
             connect_args={"check_same_thread": False},
@@ -45,11 +45,11 @@ def _build_engine():
         or ("dpg-" in raw_url and ".render.com" not in raw_url)
     )
 
-    # Strategy 1: Attempt connection with appropriate SSL setting
+    # Strategy: Attempt connection with appropriate SSL setting (sslmode=require for Render external)
     connect_attempts = []
     if not is_internal and "sslmode=" not in raw_url:
         connect_attempts.append({"sslmode": "require"})
-    connect_attempts.append({})  # No explicit sslmode (uses server default or URL param)
+    connect_attempts.append({})  # Fallback to connection string default
 
     last_error = None
     for connect_args in connect_attempts:
@@ -57,8 +57,8 @@ def _build_engine():
             eng = create_engine(
                 raw_url,
                 connect_args=connect_args,
-                pool_size=5,
-                max_overflow=10,
+                pool_size=10,
+                max_overflow=20,
                 pool_pre_ping=True,
                 pool_recycle=300,
                 echo=(settings.APP_ENV == "development"),
@@ -70,7 +70,7 @@ def _build_engine():
         except Exception as e:
             last_error = e
 
-    # If all PostgreSQL attempts failed, fall back to SQLite
+    # If all PostgreSQL attempts failed, fall back to SQLite to keep API alive
     print(f"[DB WARNING] Failed to connect to PostgreSQL ({last_error}).")
     print("[DB WARNING] Falling back to local SQLite database so the API remains online.")
     sqlite_path = PROJECT_ROOT / "derma_assist.db"
@@ -83,6 +83,28 @@ def _build_engine():
 
 engine = _build_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def check_db_connection() -> dict:
+    """Test database connectivity and return status details."""
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1")).scalar()
+            dialect = engine.dialect.name
+            return {
+                "connected": result == 1,
+                "engine": dialect,
+                "is_postgres": (dialect == "postgresql"),
+                "status": "healthy",
+            }
+    except Exception as e:
+        return {
+            "connected": False,
+            "engine": engine.dialect.name,
+            "error": str(e),
+            "status": "error",
+        }
 
 
 def get_db():
