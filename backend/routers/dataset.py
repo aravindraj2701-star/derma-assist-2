@@ -16,8 +16,31 @@ from backend.services.auth_service import get_current_user, get_optional_current
 from backend.services.dataset_service import (
     query_dataset, get_canonical_reference, load_dataset, PROJECT_ROOT
 )
+import json
+import hashlib
+import base64
 
 router = APIRouter(prefix="/dataset", tags=["Dataset Explorer"])
+
+# In-memory singletons to prevent concurrent JSON re-load spikes on Render (512MB RAM)
+_diverse_thumbnails_cache: Optional[dict] = None
+_filter_options_cache: Optional[dict] = None
+
+
+def get_diverse_thumbnails_cached() -> dict:
+    global _diverse_thumbnails_cache
+    if _diverse_thumbnails_cache is not None:
+        return _diverse_thumbnails_cache
+    diverse_file = PROJECT_ROOT / "models" / "diverse_condition_thumbnails.json"
+    if diverse_file.exists():
+        try:
+            with open(diverse_file, "r", encoding="utf-8") as f:
+                _diverse_thumbnails_cache = json.load(f)
+        except Exception:
+            _diverse_thumbnails_cache = {}
+    else:
+        _diverse_thumbnails_cache = {}
+    return _diverse_thumbnails_cache
 
 
 @router.get("")
@@ -88,17 +111,12 @@ def get_dataset_records(
         else:
             records = query.order_by((Condition.id % 400).asc(), Condition.id.asc()).offset(offset).limit(page_size).all()
 
-        # Extract distinct filter options for UI dropdowns
-        categories = [c[0] for c in db.query(Condition.category).distinct().order_by(Condition.category).all() if c[0]]
-        diseases = [d[0] for d in db.query(Condition.condition_name).distinct().order_by(Condition.condition_name).all() if d[0]]
-
-        return {
-            "records": [r.to_dict() for r in records],
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-            "total_pages": total_pages,
-            "filter_options": {
+        # Extract distinct filter options for UI dropdowns (cached to avoid full-table scans on every page hit)
+        global _filter_options_cache
+        if _filter_options_cache is None:
+            categories = [c[0] for c in db.query(Condition.category).distinct().order_by(Condition.category).all() if c[0]]
+            diseases = [d[0] for d in db.query(Condition.condition_name).distinct().order_by(Condition.condition_name).all() if d[0]]
+            _filter_options_cache = {
                 "diseases": diseases,
                 "categories": categories,
                 "severities": ["Benign", "Pre-cancerous", "Malignant"],
@@ -106,7 +124,15 @@ def get_dataset_records(
                     "Face", "Back", "Trunk", "Neck", "Extremities", "Scalp", "Hands", "Shoulders"
                 ],
                 "splits": ["train", "test", "validation"],
-            },
+            }
+
+        return {
+            "records": [r.to_dict() for r in records],
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "filter_options": _filter_options_cache,
         }
 
     # Fallback to in-memory/CSV reader if DB is completely unseeded
@@ -131,6 +157,7 @@ def get_dataset_image(
 ):
     """
     Stream dataset image from disk, with automatic canonical fallback if missing on disk (e.g. Render).
+    Uses fast in-memory cached thumbnails to avoid concurrent disk I/O & JSON parsing spikes.
     """
     clean_path = path.replace("\\", "/").lstrip("/")
     if ".." in clean_path:
@@ -159,7 +186,7 @@ def get_dataset_image(
         )
 
     # Resilient Cloud Fallback (Render):
-    # If raw training images were not deployed to disk, serve diverse clinical thumbnails
+    # If raw training images were not deployed to disk, serve diverse clinical thumbnails from in-memory cache
     condition_hint = None
     parts = clean_path.split("/")
     if len(parts) >= 3:
@@ -168,29 +195,22 @@ def get_dataset_image(
         condition_hint = parts[1]
 
     if condition_hint:
-        import hashlib, base64
-        # 1. First check diverse thumbnails catalog so even identical conditions show diverse images
-        diverse_file = PROJECT_ROOT / "models" / "diverse_condition_thumbnails.json"
-        if diverse_file.exists():
-            try:
-                import json
-                with open(diverse_file, "r", encoding="utf-8") as f:
-                    div_data = json.load(f)
-                c_low = condition_hint.lower().strip()
-                matched_samples = []
-                for k, v in div_data.items():
-                    if k.lower() == c_low or c_low in k.lower() or k.lower() in c_low:
-                        matched_samples.extend(v)
-                if matched_samples:
-                    h_val = int(hashlib.md5(clean_path.encode("utf-8")).hexdigest(), 16)
-                    picked_b64 = matched_samples[h_val % len(matched_samples)]
-                    return Response(
-                        content=base64.b64decode(picked_b64),
-                        media_type="image/jpeg",
-                        headers={"Cache-Control": "public, max-age=86400"},
-                    )
-            except Exception:
-                pass
+        # 1. First check diverse thumbnails in-memory cache (zero file reading on request)
+        div_data = get_diverse_thumbnails_cached()
+        if div_data:
+            c_low = condition_hint.lower().strip()
+            matched_samples = []
+            for k, v in div_data.items():
+                if k.lower() == c_low or c_low in k.lower() or k.lower() in c_low:
+                    matched_samples.extend(v)
+            if matched_samples:
+                h_val = int(hashlib.md5(clean_path.encode("utf-8")).hexdigest(), 16)
+                picked_b64 = matched_samples[h_val % len(matched_samples)]
+                return Response(
+                    content=base64.b64decode(picked_b64),
+                    media_type="image/jpeg",
+                    headers={"Cache-Control": "public, max-age=86400"},
+                )
 
         # 2. Canonical reference catalog fallback
         ref = get_canonical_reference(condition_hint)
