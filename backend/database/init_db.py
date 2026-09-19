@@ -65,6 +65,13 @@ def init_database():
                 name_to_id = seed_diseases(db, settings.DISEASES_CSV)
                 seed_symptoms(db, settings.SYMPTOMS_CSV, name_to_id)
                 print("[DB] Auto-seeding completed successfully.")
+
+            # Auto-seed combined skin disease dataset if empty
+            if db.query(Condition).count() == 0:
+                print("[DB] Empty conditions table detected. Auto-seeding combined skin disease dataset...")
+                from scripts.seed_dataset import seed_dataset
+                seed_dataset()
+                print("[DB] Combined dataset auto-seeding completed successfully.")
         except Exception as seed_err:
             print(f"[DB NOTICE] Auto-seed notice: {seed_err}")
         finally:
