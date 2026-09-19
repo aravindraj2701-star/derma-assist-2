@@ -76,7 +76,7 @@ export function AuthProvider({ children }) {
       localStorage.setItem('derma_token', access_token);
       localStorage.setItem('derma_user', JSON.stringify(userData));
 
-      return { success: true };
+      return { success: true, user: userData };
     } catch (error) {
       console.error('Google login failed:', error);
       const message = error.response?.data?.detail || 'Google sign-in failed.';
