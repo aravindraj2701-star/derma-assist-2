@@ -20,18 +20,36 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor — handle 401 for authenticated session expiry
+// Response interceptor — handle 401 & automatic cold-start retry
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const isAuthEndpoint = error.config?.url?.includes('/auth/');
+  async (error) => {
+    const config = error.config;
+    const isAuthEndpoint = config?.url?.includes('/auth/');
+    
     if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('derma_token');
       localStorage.removeItem('derma_user');
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
+      return Promise.reject(error);
     }
+
+    // Auto-retry on Render cold-start wakeups (ERR_NETWORK / 502 / 503 / 504)
+    if (
+      config &&
+      !config._retry &&
+      (!error.response || [502, 503, 504].includes(error.response?.status))
+    ) {
+      config._retry = true;
+      config._retryCount = (config._retryCount || 0) + 1;
+      if (config._retryCount <= 2) {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        return api(config);
+      }
+    }
+
     return Promise.reject(error);
   }
 );
