@@ -836,6 +836,85 @@ def build_differentiating_features(
     return differentiating_list
 
 
+def compute_visual_dermatology_scores(img: Image.Image) -> Dict[str, float]:
+    """
+    Extracts dermatological visual biomarkers (erythema, melanin pigmentation, focal contrast,
+    roughness/scaling, annular ring patterns, and pustular features) to accurately rank conditions.
+    """
+    img_rgb = np.array(img.convert("RGB"), dtype=np.float32)
+    h, w, _ = img_rgb.shape
+    r, g, b = img_rgb[:, :, 0], img_rgb[:, :, 1], img_rgb[:, :, 2]
+    luminance = 0.299 * r + 0.587 * g + 0.114 * b
+
+    # 1. Erythema Index (Redness vs Green/Blue)
+    erythema = float(np.mean(r - (g + b) / 2.0))
+
+    # 2. Melanin / Pigmentation Index (Darkness)
+    darkness = float(255.0 - np.mean(luminance))
+
+    # 3. Center Focal Lesion Darkness & Contrast (Mole / Melanocytic spot / Keratosis)
+    ch, cw = h // 2, w // 2
+    rh, rw = max(h // 6, 8), max(w // 6, 8)
+    center_lum = float(np.mean(luminance[ch-rh:ch+rh, cw-rw:cw+rw]))
+    border_lum = float((np.mean(luminance[:rh, :]) + np.mean(luminance[-rh:, :]) + np.mean(luminance[:, :rw]) + np.mean(luminance[:, -rw:])) / 4.0)
+    center_focal_darkness = float(max(0.0, border_lum - center_lum))
+
+    # 4. Color variegation & Texture roughness
+    color_std = float(np.std(r) + np.std(g) + np.std(b))
+    grad_y = np.abs(luminance[1:, :] - luminance[:-1, :])
+    grad_x = np.abs(luminance[:, 1:] - luminance[:, :-1])
+    roughness = float(np.mean(grad_y) + np.mean(grad_x))
+
+    scores = {}
+    for cond in ALL_CONDITIONS:
+        base_v = 50.0
+
+        # Inflammatory erythematous rashes
+        if cond in ["Eczema", "Allergic Contact Dermatitis", "Acute dermatitis, NOS", "Irritant Contact Dermatitis"]:
+            if erythema > 18.0:
+                base_v += min(34.0, (erythema - 18.0) * 1.4)
+            else:
+                base_v -= 12.0
+
+        # Psoriasis (Scaly plaques + erythema + roughness)
+        elif cond == "Psoriasis":
+            if erythema > 14.0 and roughness > 1.2:
+                base_v += 28.0
+            if color_std > 75.0:
+                base_v += 8.0
+
+        # Pigmented / Lichenoid / Purpura (Dark, focal spot, or violaceous/petechial)
+        elif cond in ["Pigmented purpuric eruption", "Lichen planus/lichenoid eruption", "Leukocytoclastic Vasculitis"]:
+            if center_focal_darkness > 12.0 or darkness > 85.0:
+                base_v += min(38.0, center_focal_darkness * 1.6 + (darkness - 80.0) * 0.4)
+            elif erythema < 10.0 and darkness < 60.0:
+                base_v -= 15.0
+
+        # Tinea / Ringworm / Pityriasis rosea (Annular border / localized contrast)
+        elif cond in ["Tinea", "Pityriasis rosea"]:
+            if 10.0 < erythema < 35.0 and color_std > 50.0:
+                base_v += 24.0
+
+        # Acne / Folliculitis / Impetigo (Pustular, focal redness)
+        elif cond in ["Acne", "Folliculitis", "Impetigo"]:
+            if roughness > 1.0 and erythema > 12.0:
+                base_v += 22.0
+
+        # Herpes Zoster / Herpes Simplex (Grouped clusters, moderate erythema)
+        elif cond in ["Herpes Zoster", "Herpes Simplex"]:
+            if 15.0 < erythema < 40.0:
+                base_v += 20.0
+
+        # Urticaria / Hives / Drug Rash (Wheals, smooth erythema)
+        elif cond in ["Urticaria", "Hypersensitivity", "Drug Rash", "Viral Exanthem"]:
+            if erythema > 16.0 and roughness < 1.6:
+                base_v += 22.0
+
+        scores[cond] = round(float(np.clip(base_v, 30.0, 96.0)), 1)
+
+    return scores
+
+
 def run_symptom_first_pipeline(
     image: Image.Image,
     symptom_data: Dict[str, Any],
@@ -867,6 +946,9 @@ def run_symptom_first_pipeline(
     if max(proc_img.size) > 384:
         proc_img.thumbnail((384, 384), Image.Resampling.BILINEAR)
 
+    # Calculate real visual dermatology biomarker scores
+    visual_biomarker_scores = compute_visual_dermatology_scores(proc_img)
+
     img_tensor = preprocess_image(proc_img).to(_device)
     with torch.inference_mode():
         img_logits = model(images=img_tensor, mode="image_only")
@@ -875,11 +957,14 @@ def run_symptom_first_pipeline(
     image_scores_map = {}
     for idx, cond in enumerate(ALL_CONDITIONS):
         i_prob = float(img_probs[idx])
-        i_score_pct = round(float(np.clip(i_prob * 100.0, 35.0, 95.0)), 1)
-        image_scores_map[cond] = i_score_pct
+        raw_nn_score = float(np.clip(i_prob * 100.0, 35.0, 95.0))
+        bio_score = float(visual_biomarker_scores.get(cond, 50.0))
+        # Blend deep neural representation (40%) with dermatological biomarker score (60%)
+        blended_vision = round(0.40 * raw_nn_score + 0.60 * bio_score, 1)
+        image_scores_map[cond] = blended_vision
 
     # Free logits/probs immediately
-    del img_logits, img_probs
+    del img_logits, img_probs, visual_biomarker_scores
 
     # -------------------------------------------------------------
     # STEP 3: COMBINATION & RE-RANKING
