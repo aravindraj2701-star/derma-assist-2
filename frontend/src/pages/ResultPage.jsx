@@ -15,6 +15,8 @@ export default function ResultPage() {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [patientImgLoaded, setPatientImgLoaded] = useState(false);
   const [patientImgError, setPatientImgError] = useState(false);
+  const [gradcamImgLoaded, setGradcamImgLoaded] = useState(false);
+  const [gradcamImgError, setGradcamImgError] = useState(false);
   const [refImgLoaded, setRefImgLoaded] = useState(false);
   const [refImgError, setRefImgError] = useState(false);
 
@@ -60,6 +62,9 @@ export default function ResultPage() {
 
   // Format Patient Image Source using robust magic-byte and MIME resolver
   const patientImageSrc = formatImageSrc(result.original_image || result.image_ref);
+
+  // Format Grad-CAM Visual Attention Heatmap Source
+  const gradcamImageSrc = formatImageSrc(result.gradcam_image);
 
   // Format Reference Image Source using dataset / embedding resolver
   const refImageSrc = getReferenceImageSrc(refExample) || formatImageSrc(refExample?.image_base64 || refExample?.image_url || refExample?.image_path);
@@ -248,6 +253,52 @@ export default function ResultPage() {
             <div className="comparison-caption-box">
               <span className="caption-label">Patient Uploaded Lesion</span>
               <span className="caption-sub">Active Consultation Submission</span>
+            </div>
+          </div>
+
+          {/* AI Attention Heatmap (Grad-CAM) Box */}
+          <div className="comparison-box gradcam-box">
+            <div className="comparison-img-frame">
+              {gradcamImageSrc && !gradcamImgError ? (
+                <>
+                  {!gradcamImgLoaded && (
+                    <div className="comparison-skeleton">
+                      <div className="skeleton-pulse"></div>
+                      <span className="skeleton-text">Rendering Grad-CAM attention...</span>
+                    </div>
+                  )}
+                  <img
+                    src={gradcamImageSrc}
+                    alt="AI Visual Attention (Grad-CAM)"
+                    className="comparison-img"
+                    style={{ opacity: gradcamImgLoaded ? 1 : 0 }}
+                    onLoad={() => setGradcamImgLoaded(true)}
+                    onError={(e) => {
+                      logImageError('AI Attention Heatmap (Grad-CAM)', gradcamImageSrc, e);
+                      setGradcamImgError(true);
+                    }}
+                  />
+                </>
+              ) : (
+                <div className="comparison-no-img gradcam-fallback">
+                  <span className="comparison-fallback-icon">🔥</span>
+                  <p className="fallback-title">Grad-CAM Explainability</p>
+                  <p className="fallback-sub">Neural activation map of predicted features</p>
+                </div>
+              )}
+            </div>
+            <div className="comparison-caption-box">
+              <div className="caption-title-row">
+                <span className="caption-label">🔥 AI Attention (Grad-CAM)</span>
+                {result.gradcam_focus_pct && (
+                  <span className="similarity-badge gradcam-badge">
+                    {result.gradcam_focus_pct}% Focus Area
+                  </span>
+                )}
+              </div>
+              <span className="caption-sub">
+                Spatial heatmap of lesion regions influencing the AI prediction
+              </span>
             </div>
           </div>
 

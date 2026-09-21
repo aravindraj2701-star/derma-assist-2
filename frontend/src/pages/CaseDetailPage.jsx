@@ -463,8 +463,8 @@ export default function CaseDetailPage() {
           <div className="card">
             <h3 style={{ marginBottom: '1rem' }}>🔥 AI Attention (Grad-CAM)</h3>
             <img
-              src={`data:image/png;base64,${caseData.gradcam_image}`}
-              alt="Grad-CAM"
+              src={formatImageSrc(caseData.gradcam_image)}
+              alt="Grad-CAM AI Attention"
               style={{ width: '100%', borderRadius: '0.75rem', maxHeight: '300px', objectFit: 'contain', background: 'var(--bg-secondary)' }}
             />
           </div>

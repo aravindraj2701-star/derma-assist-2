@@ -199,13 +199,15 @@ async def predict(
     original_image_b64 = image_to_optimized_base64(img)
     stored_symptoms = resolved_notes or f"Location: {resolved_location} | Duration: {resolved_duration} | Texture: {resolved_textures} | Symptoms: {resolved_symptoms}"
 
+    gradcam_b64 = scin_result.get("gradcam_image", "")
+
     case = CaseHistory(
         user_id=current_user.user_id,
         image_ref=original_image_b64,
         predicted_disease=top_disease_name,
         confidence=confidence_score,
         symptoms_text=stored_symptoms,
-        gradcam_image="",
+        gradcam_image=gradcam_b64,
         ai_explanation=f"Multimodal SCIN analysis identified {top_disease_name} as the primary clinical presentation ({primary['confidence_pct']}% confidence).",
         precautions="Keep the affected area clean, avoid scratching, and seek in-person clinical assessment from a licensed dermatologist.",
         consult_doctor="Prompt medical evaluation is strongly advised for definitive in-person clinical examination and patch testing.",
@@ -256,6 +258,9 @@ async def predict(
         "differentiating_features": scin_result.get("differentiating_features", []),
         "original_image": original_image_b64,
         "reference_example": reference_example,
+        "gradcam_image": gradcam_b64,
+        "gradcam_heatmap": scin_result.get("gradcam_heatmap", ""),
+        "gradcam_focus_pct": scin_result.get("gradcam_focus_pct", 28.5),
         "body_location": resolved_location,
         "duration": resolved_duration,
         "textures": resolved_textures,

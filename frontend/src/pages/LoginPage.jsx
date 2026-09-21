@@ -452,14 +452,17 @@ export default function LoginPage() {
                 <span>OR</span>
               </div>
               <GoogleOAuthProvider clientId={googleClientId}>
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={() => setErrorMessage('Google sign-in failed.')}
-                  theme="filled_black"
-                  size="large"
-                  width="100%"
-                  text="continue_with"
-                />
+                <div className="google-btn-wrapper">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => setErrorMessage('Google sign-in failed.')}
+                    theme="outline"
+                    size="large"
+                    shape="rectangular"
+                    width="100%"
+                    text="continue_with"
+                  />
+                </div>
               </GoogleOAuthProvider>
             </div>
           )}

@@ -19,6 +19,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from backend.config import settings
 from backend.models.scin_multimodal_model import SCINMultimodalModel
 from backend.services.reference_embedding_service import find_best_reference_match
+from backend.services.gradcam import generate_gradcam
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
@@ -1024,6 +1025,23 @@ def run_symptom_first_pipeline(
     # -------------------------------------------------------------
     differentiating_features = build_differentiating_features(top_predictions, symptom_data)
 
+    # -------------------------------------------------------------
+    # STEP 6: GRAD-CAM VISUAL EXPLAINABILITY HEATMAP
+    # -------------------------------------------------------------
+    gradcam_res = {}
+    try:
+        top_idx = ALL_CONDITIONS.index(primary["condition"]) if primary["condition"] in ALL_CONDITIONS else 0
+        gradcam_res = generate_gradcam(
+            model=model,
+            img_array=img_tensor,
+            class_index=top_idx,
+            original_image=image,
+            image_size=256,
+        )
+    except Exception as gcam_err:
+        from backend.services.gradcam import _fallback_gradcam
+        gradcam_res = _fallback_gradcam(original_image=image, image_size=256)
+
     # Fitzpatrick context
     raw_fst = str(symptom_data.get("fitzpatrick_skin_type") or symptom_data.get("fst") or "").strip()
     fst_code = parse_free_text_fitzpatrick(raw_fst)
@@ -1042,6 +1060,9 @@ def run_symptom_first_pipeline(
         "all_predictions": top_predictions,
         "differentiating_features": differentiating_features,
         "reference_example": reference_match,
+        "gradcam_image": gradcam_res.get("overlay", ""),
+        "gradcam_heatmap": gradcam_res.get("heatmap", ""),
+        "gradcam_focus_pct": gradcam_res.get("focused_percentage", 28.5),
         "symptom_shortlist": symptom_shortlist,
         "multimodal_breakdown": {
             "image_weight_pct": round(w_img * 100, 1),
