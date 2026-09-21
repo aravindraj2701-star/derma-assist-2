@@ -55,6 +55,9 @@ def generate_gradcam_pytorch(
             gradients.append(grad_output[0])
 
     hook_handles = []
+    x = None
+    logits = None
+    target_score = None
 
     try:
         # Identify the last convolutional layer in ResNet backbone
@@ -83,7 +86,7 @@ def generate_gradcam_pytorch(
 
         model.eval()
         device = next(model.parameters()).device
-        x = img_tensor.clone().detach().to(device)
+        x = img_tensor.detach().clone().to(device)
         x.requires_grad = True
 
         # Forward pass (vision-only or multimodal)
@@ -101,10 +104,10 @@ def generate_gradcam_pytorch(
         class_idx = int(np.clip(class_index, 0, logits.shape[1] - 1))
         target_score = logits[0, class_idx]
 
-        # Backward pass
-        model.zero_grad()
+        # Clear prior parameter gradients
+        model.zero_grad(set_to_none=True)
         if x.grad is not None:
-            x.grad.zero_()
+            x.grad = None
 
         target_score.backward(retain_graph=False)
 
@@ -138,9 +141,9 @@ def generate_gradcam_pytorch(
         heatmap_colored = cv2.applyColorMap(heatmap_uint8, cv2.COLORMAP_JET)
         heatmap_colored_rgb = cv2.cvtColor(heatmap_colored, cv2.COLOR_BGR2RGB)
 
-        # Prepare original image for overlay
+        # Prepare original image for overlay (downsampled to target size)
         if original_image is not None:
-            orig_resized = original_image.convert("RGB").resize((image_size, image_size), Image.Resampling.LANCZOS)
+            orig_resized = original_image.convert("RGB").resize((image_size, image_size), Image.Resampling.BILINEAR)
             orig_np = np.array(orig_resized, dtype=np.uint8)
         else:
             orig_np = np.ones((image_size, image_size, 3), dtype=np.uint8) * 200
@@ -151,23 +154,42 @@ def generate_gradcam_pytorch(
         # Calculate focused area percentage
         focused_pct = float(np.mean(heatmap_resized > 0.4) * 100.0)
 
-        return {
+        result = {
             "overlay": _numpy_to_base64(overlay_np),
             "heatmap": _numpy_to_base64(heatmap_colored_rgb),
             "focused_percentage": round(focused_pct, 1),
             "is_mock": False,
         }
 
+        # Explicitly clean up local arrays and tensors
+        del act, grad, pooled_grads, cam, cam_np, heatmap_resized, heatmap_uint8, heatmap_colored, heatmap_colored_rgb, overlay_np, orig_np
+        return result
+
     except Exception as e:
         logger.warning(f"Grad-CAM generation notice: {e}. Generating graceful fallback heatmap.")
         return _fallback_gradcam(original_image, image_size)
 
     finally:
+        # 1. Remove hook handles
         for h in hook_handles:
             try:
                 h.remove()
             except Exception:
                 pass
+        hook_handles.clear()
+        activations.clear()
+        gradients.clear()
+
+        # 2. Release model gradients completely from RAM
+        try:
+            model.zero_grad(set_to_none=True)
+        except Exception:
+            pass
+
+        # 3. Clean up computation graph tensors
+        del x, logits, target_score
+        import gc
+        gc.collect()
 
 
 def generate_gradcam(
@@ -197,7 +219,9 @@ def generate_gradcam(
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
-            tensor = transform(original_image.convert("RGB")).unsqueeze(0)
+            # Use a lightweight resized copy of original_image
+            small_img = original_image.convert("RGB").resize((224, 224), Image.Resampling.BILINEAR)
+            tensor = transform(small_img).unsqueeze(0)
         else:
             tensor = torch.zeros((1, 3, 224, 224), dtype=torch.float32)
 
@@ -224,25 +248,29 @@ def _fallback_gradcam(original_image: Image.Image = None, image_size: int = 224)
     heatmap_rgb = cv2.cvtColor(heatmap_colored, cv2.COLOR_BGR2RGB)
 
     if original_image is not None:
-        orig = original_image.convert("RGB").resize((image_size, image_size), Image.Resampling.LANCZOS)
+        orig = original_image.convert("RGB").resize((image_size, image_size), Image.Resampling.BILINEAR)
         orig_np = np.array(orig, dtype=np.uint8)
     else:
         orig_np = np.ones((image_size, image_size, 3), dtype=np.uint8) * 180
 
     overlay_np = cv2.addWeighted(orig_np, 0.60, heatmap_rgb, 0.40, 0)
 
-    return {
+    res = {
         "overlay": _numpy_to_base64(overlay_np),
         "heatmap": _numpy_to_base64(heatmap_rgb),
         "focused_percentage": 28.5,
         "is_mock": True,
     }
+    del orig_np, overlay_np, heatmap_rgb, heatmap_colored, heatmap_uint8
+    return res
 
 
 def _numpy_to_base64(img_array: np.ndarray) -> str:
     """Encodes NumPy RGB array into base64 JPEG format with high quality and compact footprint."""
     img = Image.fromarray(img_array.astype(np.uint8))
     buffer = io.BytesIO()
-    img.save(buffer, format="JPEG", quality=88, optimize=True)
-    buffer.seek(0)
-    return base64.b64encode(buffer.read()).decode("utf-8")
+    img.save(buffer, format="JPEG", quality=85, optimize=True)
+    b64_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    buffer.close()
+    del img
+    return b64_str

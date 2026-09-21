@@ -559,97 +559,6 @@ def match_symptoms_first(symptom_data: Dict[str, Any], top_k_shortlist: int = 8)
     return shortlist, symptom_alignment_scores
 
 
-def run_symptom_first_pipeline(
-    image: Image.Image,
-    symptom_data: Dict[str, Any],
-    symptom_weight: float = 0.40,
-    image_weight: float = 0.60,
-    shortlist_size: int = 8
-) -> Dict[str, Any]:
-    """
-    Executes the Complete 3-Step Symptom-First Multimodal Pipeline:
-    1. STEP 1: Symptom Matching First (Shortlist generation with real Symptom Alignment scores).
-    2. STEP 2: Vision scoring on image, prioritizing and filtering by the symptom shortlist.
-    3. STEP 3: Explicit weighted combination (e.g. 40% Symptoms + 60% Vision).
-    4. Reference image retrieval via visual embedding similarity.
-    """
-    model = get_trained_model()
-
-    # -------------------------------------------------------------
-    # STEP 1: SYMPTOM MATCHING FIRST
-    # -------------------------------------------------------------
-    symptom_shortlist, all_symptom_scores = match_symptoms_first(symptom_data, top_k_shortlist=shortlist_size)
-    shortlist_conditions = set(item["condition"] for item in symptom_shortlist)
-
-    # -------------------------------------------------------------
-    # STEP 2: IMAGE MATCHING WITHIN SHORTLIST
-    # -------------------------------------------------------------
-    val_tf = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    ])
-    proc_img = image.copy()
-    if max(proc_img.size) > 384:
-        proc_img.thumbnail((384, 384), Image.Resampling.LANCZOS)
-    img_tensor = val_tf(proc_img.convert("RGB")).unsqueeze(0).to(_device)
-    tab_vector = encode_structured_symptoms_vector(symptom_data)
-    tab_tensor = torch.from_numpy(tab_vector).unsqueeze(0).float().to(_device)
-
-    with torch.inference_mode():
-        fused_logits = model(images=img_tensor, tabular=tab_tensor, mode="multimodal")
-        fused_probs = torch.sigmoid(fused_logits).cpu().numpy()[0]
-
-        img_logits = model(images=img_tensor, mode="image_only")
-        raw_img_probs = torch.sigmoid(img_logits).cpu().numpy()[0]
-
-    # Free tensor allocations immediately
-    del img_tensor, tab_tensor, fused_logits, img_logits, proc_img
-    import gc
-    gc.collect()
-
-    # Convert vision probabilities to percentages [0, 100%]
-    all_image_scores = {}
-    for idx, cond in enumerate(ALL_CONDITIONS):
-        # Blend pure image feature with fused multimodal vision feature
-        p = float(0.50 * raw_img_probs[idx] + 0.50 * fused_probs[idx])
-        all_image_scores[cond] = round(float(np.clip(p * 100.0, 25.0, 96.0)), 1)
-
-    # -------------------------------------------------------------
-    # STEP 3: COMBINE EVIDENCE (EXPLICIT WEIGHTED FORMULA)
-    # -------------------------------------------------------------
-    w_sym = symptom_weight if symptom_weight is not None else getattr(settings, "SYMPTOM_WEIGHT", 0.40)
-    w_img = image_weight if image_weight is not None else getattr(settings, "IMAGE_WEIGHT", 0.60)
-
-    # Normalize weights
-    total_w = w_sym + w_img
-    w_sym = w_sym / total_w
-    w_img = w_img / total_w
-
-    candidates = []
-    for cond in ALL_CONDITIONS:
-        s_score = all_symptom_scores[cond]
-        i_score = all_image_scores[cond]
-
-        # Prior multiplier: Shortlisted conditions maintain full score;
-        # Non-shortlisted conditions are penalized by symptom prior filter
-        is_shortlisted = cond in shortlist_conditions
-        filter_multiplier = 1.0 if is_shortlisted else 0.65
-
-        combined_raw = (w_sym * s_score + w_img * i_score) * filter_multiplier
-        combined_pct = round(float(combined_raw), 1)
-
-        # Risk tiers
-        if any(w in cond.lower() for w in ["zoster", "vasculitis", "purpura", "cellulitis", "melanoma", "carcinoma"]):
-            risk_tier = "Prompt Clinical Evaluation Recommended"
-            risk_level = "warning"
-        elif any(w in cond.lower() for w in ["psoriasis", "eczema", "tinea", "dermatitis"]):
-            risk_tier = "Common Dermatological Condition"
-            risk_level = "moderate"
-        else:
-            risk_tier = "Benign / Mild Cutaneous Presentation"
-            risk_level = "low"
-
 DIFFERENTIATING_CLINICAL_PROFILES = {
     "Urticaria": {
         "key_feature": "Sudden onset of evanescent, intensely pruritic raised wheals (hives) that typically blanch with pressure and resolve or shift locations within hours.",
@@ -953,16 +862,24 @@ def run_symptom_first_pipeline(
     # -------------------------------------------------------------
     # STEP 2: VISION SCORING
     # -------------------------------------------------------------
-    img_tensor = preprocess_image(image).to(_device)
-    with torch.no_grad():
+    # Downscale image early to keep memory under strict limits
+    proc_img = image.convert("RGB")
+    if max(proc_img.size) > 384:
+        proc_img.thumbnail((384, 384), Image.Resampling.BILINEAR)
+
+    img_tensor = preprocess_image(proc_img).to(_device)
+    with torch.inference_mode():
         img_logits = model(images=img_tensor, mode="image_only")
-        img_probs = torch.sigmoid(img_logits).cpu().numpy()[0] # Shape: [20]
+        img_probs = torch.sigmoid(img_logits).cpu().numpy()[0]  # Shape: [20]
 
     image_scores_map = {}
     for idx, cond in enumerate(ALL_CONDITIONS):
         i_prob = float(img_probs[idx])
         i_score_pct = round(float(np.clip(i_prob * 100.0, 35.0, 95.0)), 1)
         image_scores_map[cond] = i_score_pct
+
+    # Free logits/probs immediately
+    del img_logits, img_probs
 
     # -------------------------------------------------------------
     # STEP 3: COMBINATION & RE-RANKING
@@ -1018,7 +935,7 @@ def run_symptom_first_pipeline(
     # -------------------------------------------------------------
     # STEP 4: RETRIEVE MATCHED REFERENCE IMAGE (VISUAL EMBEDDING MATCH)
     # -------------------------------------------------------------
-    reference_match = find_best_reference_match(image, primary["condition"])
+    reference_match = find_best_reference_match(proc_img, primary["condition"])
 
     # -------------------------------------------------------------
     # STEP 5: BUILD DIFFERENTIATING FEATURES & CLINICAL COMPARISON MATRIX
@@ -1035,12 +952,17 @@ def run_symptom_first_pipeline(
             model=model,
             img_array=img_tensor,
             class_index=top_idx,
-            original_image=image,
-            image_size=256,
+            original_image=proc_img,
+            image_size=224,
         )
     except Exception as gcam_err:
         from backend.services.gradcam import _fallback_gradcam
-        gradcam_res = _fallback_gradcam(original_image=image, image_size=256)
+        gradcam_res = _fallback_gradcam(original_image=proc_img, image_size=224)
+
+    # Clean up tensor and image buffers
+    del img_tensor, proc_img
+    import gc
+    gc.collect()
 
     # Fitzpatrick context
     raw_fst = str(symptom_data.get("fitzpatrick_skin_type") or symptom_data.get("fst") or "").strip()

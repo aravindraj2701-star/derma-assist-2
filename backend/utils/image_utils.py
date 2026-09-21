@@ -80,14 +80,16 @@ def image_to_base64(img: Image.Image, format: str = "PNG") -> str:
     return base64.b64encode(buffer.read()).decode("utf-8")
 
 
-def image_to_optimized_base64(img: Image.Image, max_dim: int = 800, quality: int = 85) -> str:
-    """Convert a PIL Image to a lightweight, responsive JPEG base64 string (~100-200KB)."""
+def image_to_optimized_base64(img: Image.Image, max_dim: int = 480, quality: int = 82) -> str:
+    """Convert a PIL Image to a lightweight, responsive JPEG base64 string (~40-80KB)."""
     buffer = io.BytesIO()
     thumb = img.copy().convert("RGB")
-    thumb.thumbnail((max_dim, max_dim), Image.LANCZOS)
-    thumb.save(buffer, format="JPEG", quality=quality)
-    buffer.seek(0)
-    return base64.b64encode(buffer.read()).decode("utf-8")
+    thumb.thumbnail((max_dim, max_dim), Image.Resampling.BILINEAR)
+    thumb.save(buffer, format="JPEG", quality=quality, optimize=True)
+    b64_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    buffer.close()
+    del thumb
+    return b64_str
 
 
 def numpy_to_base64(img_array: np.ndarray) -> str:
