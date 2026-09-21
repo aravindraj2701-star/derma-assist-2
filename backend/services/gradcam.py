@@ -13,9 +13,20 @@ import numpy as np
 from PIL import Image
 import cv2
 import torch
-import torch.nn.functional as F
+import os
 
 logger = logging.getLogger(__name__)
+
+
+def is_memory_constrained() -> bool:
+    """Detect if running in memory-constrained cloud environments (e.g. Render free tier 512MB)."""
+    return bool(
+        os.environ.get("RENDER")
+        or os.environ.get("DYNO")
+        or os.environ.get("VERCEL")
+        or os.environ.get("LOW_MEMORY_MODE", "1") == "1"
+        or os.environ.get("APP_ENV") == "production"
+    )
 
 
 def generate_gradcam_pytorch(
@@ -27,21 +38,9 @@ def generate_gradcam_pytorch(
 ) -> dict:
     """
     Generates PyTorch-native Grad-CAM heatmap and overlay for a given class index.
-
-    Args:
-        model: PyTorch SCINMultimodalModel or vision network.
-        img_tensor: Preprocessed tensor of shape (1, 3, H, W).
-        class_index: Target disease class index (0-19).
-        original_image: Optional PIL Image to overlay heatmap onto.
-        image_size: Target resolution for heatmap rendering.
-
-    Returns:
-        Dict with:
-        - "overlay": base64 PNG/JPEG overlay string
-        - "heatmap": base64 PNG/JPEG raw heatmap string
-        - "focused_percentage": approximate % of lesion area focused
+    Safely routes to lightweight heatmap in 512MB memory constrained environments.
     """
-    if model is None or img_tensor is None:
+    if model is None or img_tensor is None or is_memory_constrained():
         return _fallback_gradcam(original_image, image_size)
 
     activations = []
