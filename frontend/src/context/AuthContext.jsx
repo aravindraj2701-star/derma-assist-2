@@ -84,6 +84,37 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const response = await authAPI.getMe();
+      if (response.data?.user) {
+        setUser(response.data.user);
+        localStorage.setItem('derma_user', JSON.stringify(response.data.user));
+        return { success: true, user: response.data.user };
+      }
+    } catch (err) {
+      console.error('Failed to refresh user profile:', err);
+    }
+    return { success: false };
+  };
+
+  const updateProfile = async (profileData) => {
+    try {
+      const response = await authAPI.updateProfile(profileData);
+      const updatedUser = response.data?.user;
+      if (updatedUser) {
+        setUser(updatedUser);
+        localStorage.setItem('derma_user', JSON.stringify(updatedUser));
+        return { success: true, user: updatedUser, message: response.data?.message };
+      }
+      return { success: true };
+    } catch (error) {
+      console.error('Profile update failed:', error);
+      const message = error.response?.data?.detail || 'Failed to update profile. Please try again.';
+      return { success: false, error: message };
+    }
+  };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -99,6 +130,8 @@ export function AuthProvider({ children }) {
     login,
     register,
     googleLogin,
+    updateProfile,
+    refreshUser,
     logout,
   };
 

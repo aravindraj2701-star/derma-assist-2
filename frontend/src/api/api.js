@@ -59,6 +59,9 @@ export const authAPI = {
   login: (email, password) => api.post('/auth/login', { email, password }),
   register: (name, email, password, role = 'patient') => api.post('/auth/register', { name, email, password, role }),
   googleLogin: (token) => api.post('/auth/google', { token }),
+  getMe: () => api.get('/auth/me'),
+  updateProfile: (profileData) => api.put('/auth/profile', profileData),
+  changePassword: (currentPassword, newPassword) => api.post('/auth/change-password', { current_password: currentPassword, new_password: newPassword }),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   resetPassword: (token, newPassword) => api.post('/auth/reset-password', { token, new_password: newPassword }),
 };

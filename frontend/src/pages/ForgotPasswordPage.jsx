@@ -9,11 +9,14 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [resetLink, setResetLink] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
+    setResetLink('');
+    setCopiedLink(false);
 
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
@@ -23,15 +26,24 @@ export default function ForgotPasswordPage() {
 
     setIsLoading(true);
     try {
-      await authAPI.forgotPassword(cleanEmail);
+      const res = await authAPI.forgotPassword(cleanEmail);
+      if (res.data?.reset_link) {
+        setResetLink(res.data.reset_link);
+      }
       setIsSubmitted(true);
     } catch (err) {
-      // Even on network error, keep message enumeration-safe if possible
       const serverMsg = err.response?.data?.detail;
       setErrorMessage(serverMsg || 'An error occurred while requesting password reset. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCopyLink = () => {
+    if (!resetLink) return;
+    navigator.clipboard.writeText(resetLink);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 3000);
   };
 
   return (
@@ -67,16 +79,52 @@ export default function ForgotPasswordPage() {
           )}
 
           {isSubmitted ? (
-            /* Enumeration-safe confirmation state */
+            /* Confirmation state with direct access link */
             <div className="forgot-success-card animate-fade-in">
               <div className="forgot-success-icon">📬</div>
-              <h3 className="forgot-success-title">Check Your Inbox</h3>
+              <h3 className="forgot-success-title">Password Reset Dispatched</h3>
               <p className="forgot-success-desc">
-                If an account exists for <strong>{email}</strong>, a password reset link has been dispatched to your inbox.
+                A password reset authorization has been generated for <strong>{email}</strong>.
               </p>
+
+              {resetLink && (
+                <div style={{
+                  background: '#f0fdfa',
+                  border: '1px solid #5eead4',
+                  borderRadius: '10px',
+                  padding: '1rem',
+                  margin: '1.25rem 0',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '1.1rem' }}>⚡</span>
+                    <strong style={{ fontSize: '0.9rem', color: '#0f766e' }}>Direct Password Reset Access</strong>
+                  </div>
+                  <p style={{ fontSize: '0.82rem', color: '#134e4a', margin: '0 0 0.75rem' }}>
+                    You can reset your password immediately using the generated link below:
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <a
+                      href={resetLink}
+                      className="btn btn-primary btn-sm"
+                      style={{ flex: 1, textAlign: 'center', textDecoration: 'none' }}
+                    >
+                      🚀 Reset Password Now &rarr;
+                    </a>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={handleCopyLink}
+                    >
+                      {copiedLink ? '✓ Copied' : '📋 Copy Link'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="forgot-instructions-box">
                 <p>• The reset link will expire in <strong>60 minutes</strong>.</p>
-                <p>• Check your spam or junk folder if you do not see it shortly.</p>
+                <p>• If SMTP email server is configured, check your inbox or spam folder.</p>
               </div>
 
               <div className="forgot-actions-group">
@@ -85,13 +133,14 @@ export default function ForgotPasswordPage() {
                   onClick={() => {
                     setIsSubmitted(false);
                     setEmail('');
+                    setResetLink('');
                   }}
                   className="btn btn-secondary btn-md"
                   style={{ width: '100%' }}
                 >
                   Send to Another Email
                 </button>
-                <Link to="/login" className="btn btn-primary btn-md" style={{ width: '100%', textAlign: 'center' }}>
+                <Link to="/login" className="btn btn-outline btn-md" style={{ width: '100%', textAlign: 'center' }}>
                   Return to Sign In &rarr;
                 </Link>
               </div>

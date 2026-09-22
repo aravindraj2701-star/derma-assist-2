@@ -482,17 +482,8 @@ def match_symptoms_first(symptom_data: Dict[str, Any], top_k_shortlist: int = 8)
     1. Ranked shortlist of candidate conditions with non-zero symptom alignment scores.
     2. Lookup dict of {condition_name: symptom_score_pct}.
     """
-    model = get_trained_model()
-    tab_vector = encode_structured_symptoms_vector(symptom_data)
-    tab_tensor = torch.from_numpy(tab_vector).unsqueeze(0).float().to(_device)
-
-    # 1. Neural Tabular Predictions
-    with torch.no_grad():
-        tab_logits = model(tabular=tab_tensor, mode="tabular_only")
-        tab_probs = torch.sigmoid(tab_logits).cpu().numpy()[0] # Shape: [20]
-
-    # 2. Rule & Clinical Profile Scoring with NLP extraction
-    bp_user = str(symptom_data.get("body_part") or symptom_data.get("body_location") or "").lower()
+    # 1. Rule & Clinical Profile Scoring with NLP extraction
+    bp_user = str(symptom_data.get("body_part") or symptom_data.get("body_location") or "").lower().strip()
     active_bps = parse_free_text_body_parts(bp_user)
     dur_parsed = parse_free_text_duration(str(symptom_data.get("condition_duration") or symptom_data.get("duration") or ""))
     
@@ -503,23 +494,30 @@ def match_symptoms_first(symptom_data: Dict[str, Any], top_k_shortlist: int = 8)
         str(symptom_data.get("patient_notes") or "") + " " +
         str(symptom_data.get("symptoms") or "") + " " +
         raw_textures + " " + bp_user
-    ).lower()
+    ).lower().strip()
+
+    # Check if meaningful symptoms were actually provided
+    has_meaningful_symptoms = bool(
+        (active_bps and active_bps != ["other"]) or
+        (active_tex and active_tex != ["other"]) or
+        any(sens in all_notes for sens in ["itching", "burning", "pain", "bleeding", "scale", "bump", "crust", "rash", "blister", "pustule", "ring"]) or
+        len(all_notes) > 5
+    )
 
     symptom_alignment_scores = {}
 
     for idx, cond in enumerate(ALL_CONDITIONS):
-        profile = CONDITION_PROFILES.get(cond, {})
-        neural_prob = float(tab_probs[idx]) # [0, 1]
+        if not has_meaningful_symptoms:
+            symptom_alignment_scores[cond] = 50.0
+            continue
 
-        # Overlap points
+        profile = CONDITION_PROFILES.get(cond, {})
         profile_pts = 0.0
         max_pts = 4.0
 
         # Body part match
         if any(bp in active_bps for bp in profile.get("body_parts", [])) or any(bp in bp_user for bp in profile.get("body_parts", [])):
             profile_pts += 1.2
-        elif "other" in active_bps or not bp_user:
-            profile_pts += 0.6
 
         # Texture match
         if any(tex in active_tex for tex in profile.get("textures", [])):
@@ -540,10 +538,7 @@ def match_symptoms_first(symptom_data: Dict[str, Any], top_k_shortlist: int = 8)
             profile_pts += 0.6
 
         rule_score = min(profile_pts / max_pts, 1.0)
-
-        # Blended Symptom Alignment percentage:
-        blended_sym_prob = (0.50 * neural_prob + 0.50 * rule_score)
-        sym_score_pct = round(float(np.clip(blended_sym_prob * 100.0, 30.0, 96.0)), 1)
+        sym_score_pct = round(float(np.clip(30.0 + rule_score * 65.0, 30.0, 96.0)), 1)
         symptom_alignment_scores[cond] = sym_score_pct
 
     # Sort all conditions by symptom alignment score descending
@@ -836,81 +831,166 @@ def build_differentiating_features(
     return differentiating_list
 
 
+def match_symptoms_first(
+    symptom_data: Dict[str, Any],
+    top_k_shortlist: int = 8
+) -> Tuple[List[Dict[str, Any]], Dict[str, float]]:
+    """
+    Step 1 function: matches user symptoms against condition profiles
+    to generate an initial shortlist.
+    """
+    raw_bps = str(symptom_data.get("body_location") or symptom_data.get("body_part") or "").lower()
+    raw_tex = str(symptom_data.get("textures") or "").lower()
+    raw_dur = str(symptom_data.get("duration") or symptom_data.get("condition_duration") or "").lower()
+    raw_notes = str(symptom_data.get("patient_notes") or "").lower()
+    
+    bp_user = [b.strip() for b in raw_bps.split(",") if b.strip()]
+    tex_user = [t.strip() for t in raw_tex.split(",") if t.strip()]
+    
+    active_bps = set(bp_user)
+    active_tex = set(tex_user)
+    all_notes = f"{raw_bps} {raw_tex} {raw_dur} {raw_notes}"
+    dur_parsed = parse_duration_category(raw_dur)
+
+    # Check if user provided meaningful symptoms
+    has_meaningful_symptoms = bool(
+        active_bps or active_tex or any(sens in all_notes for sens in ["itching", "burning", "pain", "bleeding", "scale", "bump", "crust"]) or
+        len(all_notes.strip()) > 3
+    )
+
+    symptom_alignment_scores = {}
+
+    for idx, cond in enumerate(ALL_CONDITIONS):
+        if not has_meaningful_symptoms:
+            symptom_alignment_scores[cond] = 50.0
+            continue
+
+        profile = CONDITION_PROFILES.get(cond, {})
+        profile_pts = 0.0
+        max_pts = 4.0
+
+        # Body part match
+        if any(bp in active_bps for bp in profile.get("body_parts", [])) or any(bp in bp_user for bp in profile.get("body_parts", [])):
+            profile_pts += 1.2
+
+        # Texture match
+        if any(tex in active_tex for tex in profile.get("textures", [])):
+            profile_pts += 1.0
+
+        # Sensation match
+        for sens in profile.get("sensations", []):
+            if sens in all_notes or symptom_data.get(sens):
+                profile_pts += 0.5
+
+        # Free-text keyword match
+        kw_hits = sum(1 for kw in profile.get("keywords", []) if kw in all_notes)
+        if kw_hits > 0:
+            profile_pts += min(kw_hits * 0.4, 1.2)
+
+        # Duration match
+        if dur_parsed in profile.get("durations", []):
+            profile_pts += 0.6
+
+        rule_score = min(profile_pts / max_pts, 1.0)
+        sym_score_pct = round(float(np.clip(30.0 + rule_score * 65.0, 30.0, 96.0)), 1)
+        symptom_alignment_scores[cond] = sym_score_pct
+
+    # Sort all conditions by symptom alignment score descending
+    sorted_by_symptom = sorted(
+        symptom_alignment_scores.items(), key=lambda x: x[1], reverse=True
+    )
+
+    shortlist = [
+        {"condition": cond, "symptom_score": score, "rank_symptom": i + 1}
+        for i, (cond, score) in enumerate(sorted_by_symptom[:top_k_shortlist])
+    ]
+
+    return shortlist, symptom_alignment_scores
+
+
 def compute_visual_dermatology_scores(img: Image.Image) -> Dict[str, float]:
     """
-    Extracts dermatological visual biomarkers (erythema, melanin pigmentation, focal contrast,
-    roughness/scaling, annular ring patterns, and pustular features) to accurately rank conditions.
+    Extracts calibrated dermatological visual biomarkers:
+    - Melanin / Focal Lesion Darkness (Moles, Melanocytic, Keratosis, Purpura)
+    - Relative Erythema (Inflammation vs surrounding skin tone)
+    - Keratin / Crust Index (Scales, yellow honey crusts, plaques)
+    - Texture Roughness & Spatial Variance
     """
     img_rgb = np.array(img.convert("RGB"), dtype=np.float32)
     h, w, _ = img_rgb.shape
     r, g, b = img_rgb[:, :, 0], img_rgb[:, :, 1], img_rgb[:, :, 2]
+    
+    total_rgb = r + g + b + 1e-5
+    norm_r = r / total_rgb
     luminance = 0.299 * r + 0.587 * g + 0.114 * b
 
-    # 1. Erythema Index (Redness vs Green/Blue)
-    erythema = float(np.mean(r - (g + b) / 2.0))
-
-    # 2. Melanin / Pigmentation Index (Darkness)
-    darkness = float(255.0 - np.mean(luminance))
-
-    # 3. Center Focal Lesion Darkness & Contrast (Mole / Melanocytic spot / Keratosis)
     ch, cw = h // 2, w // 2
     rh, rw = max(h // 6, 8), max(w // 6, 8)
+
     center_lum = float(np.mean(luminance[ch-rh:ch+rh, cw-rw:cw+rw]))
     border_lum = float((np.mean(luminance[:rh, :]) + np.mean(luminance[-rh:, :]) + np.mean(luminance[:, :rw]) + np.mean(luminance[:, -rw:])) / 4.0)
     center_focal_darkness = float(max(0.0, border_lum - center_lum))
 
-    # 4. Color variegation & Texture roughness
-    color_std = float(np.std(r) + np.std(g) + np.std(b))
+    center_r = float(np.mean(norm_r[ch-rh:ch+rh, cw-rw:cw+rw]))
+    border_r = float((np.mean(norm_r[:rh, :]) + np.mean(norm_r[-rh:, :]) + np.mean(norm_r[:, :rw]) + np.mean(norm_r[:, -rw:])) / 4.0)
+    relative_erythema = float(center_r - border_r)
+
+    # Yellow/crust index (R and G high, B low)
+    crust_index = float(np.mean(r[ch-rh:ch+rh, cw-rw:cw+rw] + g[ch-rh:ch+rh, cw-rw:cw+rw] - 2 * b[ch-rh:ch+rh, cw-rw:cw+rw]))
+
+    # Spatial roughness (high-frequency edges)
     grad_y = np.abs(luminance[1:, :] - luminance[:-1, :])
     grad_x = np.abs(luminance[:, 1:] - luminance[:, :-1])
     roughness = float(np.mean(grad_y) + np.mean(grad_x))
+
+    overall_darkness = float(255.0 - np.mean(luminance))
 
     scores = {}
     for cond in ALL_CONDITIONS:
         base_v = 50.0
 
-        # Inflammatory erythematous rashes
-        if cond in ["Eczema", "Allergic Contact Dermatitis", "Acute dermatitis, NOS", "Irritant Contact Dermatitis"]:
-            if erythema > 18.0:
-                base_v += min(34.0, (erythema - 18.0) * 1.4)
-            else:
-                base_v -= 12.0
-
-        # Psoriasis (Scaly plaques + erythema + roughness)
-        elif cond == "Psoriasis":
-            if erythema > 14.0 and roughness > 1.2:
-                base_v += 28.0
-            if color_std > 75.0:
-                base_v += 8.0
-
-        # Pigmented / Lichenoid / Purpura (Dark, focal spot, or violaceous/petechial)
-        elif cond in ["Pigmented purpuric eruption", "Lichen planus/lichenoid eruption", "Leukocytoclastic Vasculitis"]:
-            if center_focal_darkness > 12.0 or darkness > 85.0:
-                base_v += min(38.0, center_focal_darkness * 1.6 + (darkness - 80.0) * 0.4)
-            elif erythema < 10.0 and darkness < 60.0:
+        # 1. Dark Pigmented / Melanocytic / Lichenoid / Purpuric Lesions
+        if cond in ["Pigmented purpuric eruption", "Lichen planus/lichenoid eruption", "Leukocytoclastic Vasculitis"]:
+            if center_focal_darkness > 15.0 or overall_darkness > 100.0:
+                base_v += min(42.0, center_focal_darkness * 1.8 + (overall_darkness - 90.0) * 0.3)
+            elif relative_erythema > 0.05 and center_focal_darkness < 5.0:
                 base_v -= 15.0
 
-        # Tinea / Ringworm / Pityriasis rosea (Annular border / localized contrast)
+        # 2. Crusted / Scaly / Keratotic Lesions (Actinic/Seborrheic Keratosis, Psoriasis, Impetigo)
+        elif cond in ["Psoriasis", "Impetigo"]:
+            if crust_index > 40.0 or (roughness > 1.8 and relative_erythema > 0.02):
+                base_v += min(38.0, (crust_index - 30.0) * 0.4 + roughness * 10.0)
+            if center_focal_darkness > 30.0:
+                base_v -= 10.0
+
+        # 3. Inflammatory Rashes (Eczema, Contact Dermatitis, Urticaria)
+        elif cond in ["Eczema", "Allergic Contact Dermatitis", "Acute dermatitis, NOS", "Irritant Contact Dermatitis"]:
+            if relative_erythema > 0.03 and center_focal_darkness < 15.0:
+                base_v += min(32.0, relative_erythema * 400.0)
+            elif center_focal_darkness > 25.0:
+                base_v -= 20.0
+
+        # 4. Annular / Ring-shaped Lesions (Tinea / Ringworm, Pityriasis rosea)
         elif cond in ["Tinea", "Pityriasis rosea"]:
-            if 10.0 < erythema < 35.0 and color_std > 50.0:
+            if relative_erythema > 0.02 and center_focal_darkness < 15.0 and crust_index < 50.0:
+                base_v += 26.0
+
+        # 5. Pustular / Follicular (Acne, Folliculitis)
+        elif cond in ["Acne", "Folliculitis"]:
+            if roughness > 1.4 and relative_erythema > 0.02:
                 base_v += 24.0
 
-        # Acne / Folliculitis / Impetigo (Pustular, focal redness)
-        elif cond in ["Acne", "Folliculitis", "Impetigo"]:
-            if roughness > 1.0 and erythema > 12.0:
-                base_v += 22.0
-
-        # Herpes Zoster / Herpes Simplex (Grouped clusters, moderate erythema)
+        # 6. Grouped Vesicular (Herpes Zoster, Herpes Simplex)
         elif cond in ["Herpes Zoster", "Herpes Simplex"]:
-            if 15.0 < erythema < 40.0:
-                base_v += 20.0
-
-        # Urticaria / Hives / Drug Rash (Wheals, smooth erythema)
-        elif cond in ["Urticaria", "Hypersensitivity", "Drug Rash", "Viral Exanthem"]:
-            if erythema > 16.0 and roughness < 1.6:
+            if relative_erythema > 0.02 and roughness > 1.3:
                 base_v += 22.0
 
-        scores[cond] = round(float(np.clip(base_v, 30.0, 96.0)), 1)
+        # 7. Smooth Wheals / Urticaria
+        elif cond in ["Urticaria", "Hypersensitivity", "Viral Exanthem"]:
+            if relative_erythema > 0.02 and roughness < 1.4:
+                base_v += 24.0
+
+        scores[cond] = round(float(np.clip(base_v, 25.0, 96.0)), 1)
 
     return scores
 

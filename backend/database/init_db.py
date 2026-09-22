@@ -37,15 +37,20 @@ def init_database():
                     ("city", "VARCHAR(100)"),
                     ("state", "VARCHAR(100)"),
                     ("zip_code", "VARCHAR(30)"),
+                    ("country", "VARCHAR(100)"),
                     ("date_of_birth", "VARCHAR(50)"),
                     ("gender", "VARCHAR(30)"),
+                    ("blood_group", "VARCHAR(20)"),
+                    ("skin_type", "VARCHAR(100)"),
+                    ("allergies", "TEXT"),
+                    ("medical_history", "TEXT"),
+                    ("current_medications", "TEXT"),
                     ("bio", "TEXT"),
                     ("specialization", "VARCHAR(150)"),
                     ("hospital_affiliation", "VARCHAR(255)"),
                     ("license_number", "VARCHAR(100)"),
                     ("emergency_contact", "VARCHAR(100)"),
                     ("emergency_phone", "VARCHAR(50)"),
-                    ("allergies", "TEXT"),
                 ]
                 for col_name, col_type in profile_fields:
                     if col_name not in user_cols:

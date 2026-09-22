@@ -54,8 +54,37 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class ProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    country: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    gender: Optional[str] = None
+    blood_group: Optional[str] = None
+    skin_type: Optional[str] = None
+    allergies: Optional[str] = None
+    medical_history: Optional[str] = None
+    current_medications: Optional[str] = None
+    bio: Optional[str] = None
+    specialization: Optional[str] = None
+    hospital_affiliation: Optional[str] = None
+    license_number: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    emergency_phone: Optional[str] = None
+
+
 class MessageResponse(BaseModel):
     message: str
+    reset_link: Optional[str] = None
 
 
 class LoginResponse(BaseModel):
@@ -79,6 +108,59 @@ def _get_user_agent(request: Request) -> str:
 def get_me(user: User = Depends(get_current_user)):
     """Fetch current user profile and role."""
     return {"user": user.to_dict()}
+
+
+@router.put("/profile")
+def update_profile(
+    request: ProfileUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update profile details for the authenticated user (location, phone, clinical & practitioner info).
+    """
+    user = db.query(User).filter(User.user_id == current_user.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    update_fields = request.model_dump(exclude_unset=True)
+    for field, value in update_fields.items():
+        if hasattr(user, field):
+            setattr(user, field, value)
+
+    db.commit()
+    db.refresh(user)
+    return {"message": "Profile updated successfully.", "user": user.to_dict()}
+
+
+@router.post("/change-password", response_model=MessageResponse)
+def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Change account password for authenticated user.
+    """
+    user = db.query(User).filter(User.user_id == current_user.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if not user.hashed_password:
+        raise HTTPException(
+            status_code=400,
+            detail="Accounts registered with Google do not have a password. Use Google Sign-In.",
+        )
+
+    if not verify_password(request.current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password does not match.")
+
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters.")
+
+    user.hashed_password = hash_password(request.new_password)
+    db.commit()
+    return MessageResponse(message="Password successfully updated.")
 
 
 @router.post("/google", response_model=LoginResponse)
@@ -361,7 +443,10 @@ def forgot_password(
     # Asynchronously dispatch reset email
     send_password_reset_email(user, reset_link, background_tasks)
 
-    return MessageResponse(message=generic_msg)
+    return MessageResponse(
+        message="A password reset link has been dispatched to your email address.",
+        reset_link=reset_link,
+    )
 
 
 @router.post("/reset-password", response_model=MessageResponse)

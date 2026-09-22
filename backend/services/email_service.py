@@ -67,11 +67,16 @@ def send_email(to_email: str, subject: str, html_body: str) -> bool:
         msg.attach(part)
 
         # Connect to SMTP Host
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
-            if settings.SMTP_USE_TLS:
-                server.starttls()
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.sendmail(settings.SMTP_FROM_EMAIL, [to_email], msg.as_string())
+        if settings.SMTP_PORT == 465:
+            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                server.sendmail(settings.SMTP_FROM_EMAIL, [to_email], msg.as_string())
+        else:
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+                if settings.SMTP_USE_TLS:
+                    server.starttls()
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                server.sendmail(settings.SMTP_FROM_EMAIL, [to_email], msg.as_string())
 
         logger.info(f"[EMAIL] Successfully sent '{subject}' to {to_email}")
         return True
