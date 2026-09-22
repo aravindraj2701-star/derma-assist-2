@@ -394,6 +394,7 @@ def login(
 @router.post("/forgot-password", response_model=MessageResponse)
 def forgot_password(
     request: ForgotPasswordRequest,
+    req: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
@@ -437,8 +438,20 @@ def forgot_password(
     db.add(reset_token)
     db.commit()
 
+    # Determine frontend URL dynamically from request header if available
+    origin = req.headers.get("origin")
+    referer = req.headers.get("referer")
+    if origin and origin.startswith("http"):
+        frontend_base = origin.rstrip("/")
+    elif referer and referer.startswith("http"):
+        from urllib.parse import urlparse
+        parsed = urlparse(referer)
+        frontend_base = f"{parsed.scheme}://{parsed.netloc}"
+    else:
+        frontend_base = settings.FRONTEND_URL.rstrip("/")
+
     # Build reset link
-    reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token_str}"
+    reset_link = f"{frontend_base}/reset-password?token={token_str}"
 
     # Asynchronously dispatch reset email
     send_password_reset_email(user, reset_link, background_tasks)

@@ -11,6 +11,7 @@ export default function ForgotPasswordPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [resetLink, setResetLink] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
