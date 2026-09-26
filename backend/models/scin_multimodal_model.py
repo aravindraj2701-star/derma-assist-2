@@ -34,10 +34,11 @@ class TabularSymptomEncoder(nn.Module):
 
 class VisionBackbone(nn.Module):
     """
-    Vision encoder based on pretrained ResNet34 extracting 512-dim spatial features.
+    Vision encoder based on ResNet34 extracting 512-dim spatial features.
+    Configured for zero online downloads and low memory consumption.
     """
 
-    def __init__(self, embed_dim: int = 512, pretrained: bool = True, dropout: float = 0.3):
+    def __init__(self, embed_dim: int = 512, pretrained: bool = False, dropout: float = 0.3):
         super().__init__()
         weights = models.ResNet34_Weights.DEFAULT if pretrained else None
         resnet = models.resnet34(weights=weights)
@@ -73,7 +74,7 @@ class SCINMultimodalModel(nn.Module):
         tabular_embed_dim: int = 128,
         fusion_hidden_dim: int = 256,
         dropout: float = 0.3,
-        pretrained_vision: bool = True,
+        pretrained_vision: bool = False,
     ):
         super().__init__()
         self.num_classes = num_classes

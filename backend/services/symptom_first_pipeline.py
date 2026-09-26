@@ -850,7 +850,7 @@ def match_symptoms_first(
     active_bps = set(bp_user)
     active_tex = set(tex_user)
     all_notes = f"{raw_bps} {raw_tex} {raw_dur} {raw_notes}"
-    dur_parsed = parse_duration_category(raw_dur)
+    dur_parsed = parse_free_text_duration(raw_dur)
 
     # Check if user provided meaningful symptoms
     has_meaningful_symptoms = bool(

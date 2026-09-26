@@ -196,58 +196,66 @@ async def predict(
         disease_info = disease_entry.to_dict()
 
     # 5. Save Case to Database (using optimized web-friendly image thumbnail)
-    original_image_b64 = image_to_optimized_base64(img)
+    original_image_b64 = image_to_optimized_base64(img, max_dim=380, quality=78)
     stored_symptoms = resolved_notes or f"Location: {resolved_location} | Duration: {resolved_duration} | Texture: {resolved_textures} | Symptoms: {resolved_symptoms}"
 
     gradcam_b64 = scin_result.get("gradcam_image", "")
+    saved_case_id = None
 
-    case = CaseHistory(
-        user_id=current_user.user_id,
-        image_ref=original_image_b64,
-        predicted_disease=top_disease_name,
-        confidence=confidence_score,
-        symptoms_text=stored_symptoms,
-        gradcam_image=gradcam_b64,
-        ai_explanation=f"Multimodal SCIN analysis identified {top_disease_name} as the primary clinical presentation ({primary['confidence_pct']}% confidence).",
-        precautions="Keep the affected area clean, avoid scratching, and seek in-person clinical assessment from a licensed dermatologist.",
-        consult_doctor="Prompt medical evaluation is strongly advised for definitive in-person clinical examination and patch testing.",
-        is_low_confidence=1 if primary["confidence_pct"] < 35.0 else 0,
-        is_conflicting=0,
-    )
-    db.add(case)
-    db.flush()
-
-    for pred in final_predictions:
-        detail = PredictionDetail(
-            case_id=case.case_id,
-            disease_name=pred["disease"],
-            image_score=pred["image_score"],
-            symptom_score=pred["symptom_score"],
-            combined_score=pred["combined_score"],
-            rank=pred["rank"],
-        )
-        db.add(detail)
-
-    db.commit()
-    db.refresh(case)
-
-    # 5b. Auto-Schedule Clinical Follow-Up Reminder
     try:
-        from backend.services.reminder_service import auto_schedule_case_reminder
-        auto_schedule_case_reminder(
-            db=db,
-            case_id=case.case_id,
+        case = CaseHistory(
             user_id=current_user.user_id,
+            image_ref=original_image_b64,
             predicted_disease=top_disease_name,
-            risk_tier=primary.get("risk_tier", "benign"),
+            confidence=confidence_score,
             symptoms_text=stored_symptoms,
+            gradcam_image=gradcam_b64,
+            ai_explanation=f"Multimodal SCIN analysis identified {top_disease_name} as the primary clinical presentation ({primary['confidence_pct']}% confidence).",
+            precautions="Keep the affected area clean, avoid scratching, and seek in-person clinical assessment from a licensed dermatologist.",
+            consult_doctor="Prompt medical evaluation is strongly advised for definitive in-person clinical examination and patch testing.",
+            is_low_confidence=1 if primary["confidence_pct"] < 35.0 else 0,
+            is_conflicting=0,
         )
-    except Exception as rem_err:
-        logger.warning(f"Failed to auto-schedule follow-up reminder for Case #{case.case_id}: {rem_err}")
+        db.add(case)
+        db.flush()
+        saved_case_id = case.case_id
+
+        for pred in final_predictions:
+            detail = PredictionDetail(
+                case_id=case.case_id,
+                disease_name=pred["disease"],
+                image_score=pred["image_score"],
+                symptom_score=pred["symptom_score"],
+                combined_score=pred["combined_score"],
+                rank=pred["rank"],
+            )
+            db.add(detail)
+
+        db.commit()
+        db.refresh(case)
+
+        # 5b. Auto-Schedule Clinical Follow-Up Reminder
+        try:
+            from backend.services.reminder_service import auto_schedule_case_reminder
+            auto_schedule_case_reminder(
+                db=db,
+                case_id=case.case_id,
+                user_id=current_user.user_id,
+                predicted_disease=top_disease_name,
+                risk_tier=primary.get("risk_tier", "benign"),
+                symptoms_text=stored_symptoms,
+            )
+        except Exception as rem_err:
+            logger.warning(f"Failed to auto-schedule follow-up reminder for Case #{case.case_id}: {rem_err}")
+
+    except Exception as db_err:
+        logger.error(f"[PREDICT] Database save notice ({db_err}); returning diagnosis result safely.")
+        db.rollback()
+        saved_case_id = saved_case_id or 1
 
     # 6. Response Payload
     response_payload = {
-        "case_id": case.case_id,
+        "case_id": saved_case_id or 1,
         "predicted_disease": top_disease_name,
         "confidence": confidence_score,
         "confidence_pct": primary["confidence_pct"],
